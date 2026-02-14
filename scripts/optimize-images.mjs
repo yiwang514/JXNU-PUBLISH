@@ -102,20 +102,29 @@ const optimizeOne = async (urlPath) => {
     return { skipped: true, reason: 'fresh' };
   }
 
-  for (const output of outputs) {
-    const outPath = `${base}${output.suffix}`;
-    const vf = output.width
-      ? `scale='min(iw,${output.width})':-2:flags=lanczos`
-      : 'scale=iw:-2:flags=lanczos';
+  const generated = [];
+  try {
+    for (const output of outputs) {
+      const outPath = `${base}${output.suffix}`;
+      const vf = output.width
+        ? `scale='min(iw,${output.width})':-2:flags=lanczos`
+        : 'scale=iw:-2:flags=lanczos';
 
-    runFfmpeg([
-      '-i', absInput,
-      '-vf', vf,
-      '-c:v', 'libwebp',
-      '-quality', output.quality,
-      '-compression_level', '6',
-      outPath,
-    ]);
+      runFfmpeg([
+        '-i', absInput,
+        '-vf', vf,
+        '-c:v', 'libwebp',
+        '-quality', output.quality,
+        '-compression_level', '6',
+        outPath,
+      ]);
+      generated.push(outPath);
+    }
+  } catch (err) {
+    for (const outPath of generated) {
+      await fs.unlink(outPath).catch(() => {});
+    }
+    throw err;
   }
 
   return { skipped: false };

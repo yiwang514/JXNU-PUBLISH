@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArticleCard } from './ArticleCard';
 import { FilterBar } from './FilterBar';
+import { SiteFooter } from './SiteFooter';
 import { Feed, Article } from '../types';
 import { cn } from "@/lib/utils";
 
@@ -25,31 +26,22 @@ interface ArticleListProps {
   setIsRightSidebarOpen: (open: boolean) => void;
   activeFilters: string[];
   activeTagFilters: string[];
-  nowTs: number;
   handleFilterToggle: (filter: string) => void;
   onCategorySelect: (category: string) => void;
   onTagSelect: (tag: string) => void;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
   onResetFilters: () => void;
-  paginatedArticlesWithCategory: any[];
+  paginatedArticlesWithCategory: Article[];
   readArticleIds: Set<string>;
   handleArticleSelect: (article: Article) => void;
-  onRefresh: () => Promise<void>;
-  isRefreshing: boolean;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   totalPages: number;
   filteredArticlesCount: number;
-  isLoadingMoreHistory: boolean;
-  canLoadMoreHistory: boolean;
-  showScrollToTop: boolean;
-  handleScrollToTop: () => void;
   articleListRef: React.RefObject<HTMLDivElement>;
   visiblePageTokens: (number | string)[];
   feedId: string;
-  initialScrollPosition?: number;
-  onScrollPositionChange?: (feedId: string, position: number) => void;
   loadedCount?: number;
   totalCount?: number;
   isAllSchoolsView?: boolean;
@@ -65,7 +57,6 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   setIsRightSidebarOpen,
   activeFilters,
   activeTagFilters,
-  nowTs,
   handleFilterToggle,
   onCategorySelect,
   onTagSelect,
@@ -75,21 +66,13 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   paginatedArticlesWithCategory,
   readArticleIds,
   handleArticleSelect,
-  onRefresh,
-  isRefreshing,
   currentPage,
   setCurrentPage,
   totalPages,
   filteredArticlesCount,
-  isLoadingMoreHistory,
-  canLoadMoreHistory,
-  showScrollToTop,
-  handleScrollToTop,
   articleListRef,
   visiblePageTokens,
   feedId,
-  initialScrollPosition = 0,
-  onScrollPositionChange,
   loadedCount,
   totalCount,
   isAllSchoolsView = false,
@@ -97,6 +80,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
 }) => {
   const [pullDistance, setPullDistance] = React.useState(0);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [isFakeRefreshing, setIsFakeRefreshing] = React.useState(false);
   const [pageJumpMode, setPageJumpMode] = React.useState<'mobile' | 'desktop' | null>(null);
   const [pageJumpInput, setPageJumpInput] = React.useState('');
   const touchStartRef = React.useRef<number>(0);
@@ -111,30 +95,6 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
       '[data-radix-scroll-area-viewport]'
     ) as HTMLElement | null;
   }, [articleListRef]);
-
-  // 恢复滚动位置
-  React.useLayoutEffect(() => {
-    const viewport = getViewport();
-    if (!viewport) return;
-    const targetPosition = initialScrollPosition ?? 0;
-    const frame = requestAnimationFrame(() => {
-      viewport.scrollTop = targetPosition;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [feedId, initialScrollPosition, getViewport]);
-
-  // 保存滚动位置（滚动时）
-  React.useEffect(() => {
-    const viewport = getViewport();
-    if (!viewport || !onScrollPositionChange) return;
-    const handleScroll = () => {
-      onScrollPositionChange(feedId, viewport.scrollTop);
-    };
-    viewport.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      viewport.removeEventListener('scroll', handleScroll);
-    };
-  }, [feedId, onScrollPositionChange, getViewport]);
 
   React.useEffect(() => {
     const viewport = getViewport();
@@ -169,6 +129,15 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
     viewport.scrollTo({ top: 0, behavior: 'smooth' });
     prevSelectedDateRef.current = nextSelectedDateTs;
   }, [getViewport, selectedDate]);
+
+  const isRefreshing = isFakeRefreshing;
+
+  const handleFakeRefresh = React.useCallback(async () => {
+    if (isFakeRefreshing) return;
+    setIsFakeRefreshing(true);
+    await new Promise((resolve) => { window.setTimeout(resolve, 450); });
+    setIsFakeRefreshing(false);
+  }, [isFakeRefreshing]);
 
   const hasSearchOrFilter = searchQuery.trim().length > 0 || activeFilters.length > 0 || activeTagFilters.length > 0 || Boolean(selectedDate);
 
@@ -224,7 +193,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
 
   const handleTouchEnd = () => {
     if (pullDistance >= 60) {
-      onRefresh().finally(() => {
+      handleFakeRefresh().finally(() => {
         setPullDistance(0);
       });
     } else {
@@ -252,7 +221,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
             <h2 className="text-lg font-black truncate uppercase tracking-tight">{selectedFeed.title}</h2>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest hidden sm:block">
               {selectedDate ? (
-                `筛选日期: ${selectedDate.toLocaleDateString()}`
+                `筛选日期: ${selectedDate.toLocaleDateString('zh-CN')}`
               ) : (
                 totalCount && totalCount > 0 && activeFilters.length === 0
                   ? `已加载 ${loadedCount ?? 0} / ${totalCount}`
@@ -355,16 +324,15 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
             <div className="grid grid-flow-row grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
               {paginatedArticlesWithCategory.map((article, index) => (
                 <ArticleCard
-                  key={article.guid || article.link}
+                  key={article.guid}
                   article={article}
                   isSelected={false}
-                  isRead={readArticleIds.has(article.guid || article.link)}
+                  isRead={readArticleIds.has(article.guid)}
                   onClick={() => handleArticleSelect(article)}
                   onCategoryClick={onCategorySelect}
                   onTagClick={onTagSelect}
                   activeCategoryFilters={activeFilters}
                   activeTagFilters={activeTagFilters}
-                  nowTs={nowTs}
                   searchQuery={searchQuery}
                   priorityImage={currentPage === 1 && index < 2}
                   showSchoolTag={isAllSchoolsView}
@@ -493,55 +461,9 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
             </div>
           )}
 
-          {(isLoadingMoreHistory || canLoadMoreHistory) && (
-            <div className="py-8 text-center">
-              <div className="inline-flex items-center rounded-md border px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse bg-background">
-                {isLoadingMoreHistory ? '正在加载历史内容...' : '滑动到底部加载更多'}
-              </div>
-            </div>
-          )}
-
         </div>
 
-        <footer className="px-4 pt-8 pb-[max(72px,calc(env(safe-area-inset-bottom)+56px))] text-center text-[11px] leading-5 text-muted-foreground">
-          <span>© 2026 </span>
-          <a
-            href="https://blog.guiguisocute.cloud/"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            guiguisocute
-          </a>
-          <span>. All Rights Reserved. </span>
-          <a
-            href="/rss.xml"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            RSS
-          </a>
-          <br />
-          <span>Powered by </span>
-          <a
-            href="https://github.com/guiguisocute/JXNU-PUBLISH"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            JXNU-PUBLISH
-          </a>
-          <span> &amp; </span>
-          <a
-            href="https://openclaw.ai/"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            OpenClaw
-          </a>
-        </footer>
+        <SiteFooter className="px-4 pt-8 pb-[max(72px,calc(env(safe-area-inset-bottom)+56px))] text-center text-[11px] leading-5 text-muted-foreground" />
       </ScrollArea>
 
       <AnimatePresence>
@@ -571,22 +493,6 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                 <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(false)}>关闭</Button>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-        {showScrollToTop && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed right-6 z-30 bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))]"
-          >
-            <Button
-              size="icon"
-              onClick={handleScrollToTop}
-              className="w-12 h-12 rounded-full shadow-xl hover:scale-110 transition-transform"
-            >
-              <ArrowUp className="w-6 h-6" />
-            </Button>
           </motion.div>
         )}
       </AnimatePresence>

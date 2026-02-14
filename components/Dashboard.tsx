@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatsChart } from './StatsChart';
+import { SiteFooter } from './SiteFooter';
 import { Feed, FeedMeta } from '../types';
 
 interface DashboardProps {
@@ -14,23 +15,23 @@ interface DashboardProps {
   onBackToDashboard: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
+const isSummaryFeedId = (id: string) => id.startsWith('school-') && id.endsWith('-all');
+
+export const Dashboard: React.FC<DashboardProps> = ({
   feedEntries,
   schoolShortNameMap,
-  isSidebarOpen, 
+  isSidebarOpen,
   setIsSidebarOpen,
   onBackToDashboard
 }) => {
-  const isSummaryFeedMeta = React.useCallback((id: string) => id.startsWith('school-') && id.endsWith('-all'), []);
-
   const summaryFeeds = React.useMemo(
-    () => feedEntries.filter(({ meta }) => isSummaryFeedMeta(meta.id)),
-    [feedEntries, isSummaryFeedMeta]
+    () => feedEntries.filter(({ meta }) => isSummaryFeedId(meta.id)),
+    [feedEntries]
   );
 
   const sourceFeeds = React.useMemo(
-    () => feedEntries.filter(({ meta }) => Boolean(meta.sourceChannel) && !isSummaryFeedMeta(meta.id)),
-    [feedEntries, isSummaryFeedMeta]
+    () => feedEntries.filter(({ meta }) => Boolean(meta.sourceChannel) && !isSummaryFeedId(meta.id)),
+    [feedEntries]
   );
 
   const totalArticles = React.useMemo(
@@ -120,45 +121,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <StatsChart title="订阅源活跃度" rows={sourceRows} />
         </Card>
 
-        <footer className="pt-2 pb-[max(12px,env(safe-area-inset-bottom))] text-center text-[11px] leading-5 text-muted-foreground">
-          <span>© 2026 </span>
-          <a
-            href="https://blog.guiguisocute.cloud/"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            guiguisocute
-          </a>
-          <span>. All Rights Reserved. </span>
-          <a
-            href="/rss.xml"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            RSS
-          </a>
-          <br />
-          <span>Powered by </span>
-          <a
-            href="https://github.com/guiguisocute/JXNU-PUBLISH"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            JXNU-PUBLISH
-          </a>
-          <span> &amp; </span>
-          <a
-            href="https://openclaw.ai/"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            OpenClaw
-          </a>
-        </footer>
+        <SiteFooter className="pt-2 pb-[max(12px,env(safe-area-inset-bottom))] text-center text-[11px] leading-5 text-muted-foreground" />
       </div>
     </ScrollArea>
   );

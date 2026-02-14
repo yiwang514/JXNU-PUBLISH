@@ -3,7 +3,7 @@ export type ResponsiveImageAttrs = {
   sizes?: string;
 };
 
-const LOCAL_COVER_RE = /^\/(img\/init-|covers\/).+\.(jpg|jpeg|png)$/i;
+const LOCAL_COVER_RE = /^\/covers\/.+\.(jpg|jpeg|png)$/i;
 
 export const getResponsiveCoverAttrs = (url: string): ResponsiveImageAttrs => {
   const clean = String(url || '').trim();

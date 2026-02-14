@@ -15,40 +15,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FeedItem } from './FeedItem';
-import { Feed, FeedMeta, MediaUrl } from '../types';
+import { Feed, FeedMeta } from '../types';
+import { CategoryNode } from '../hooks/use-feed-data';
 import { cn } from "@/lib/utils";
-import { proxyImageUrl, getMediaUrl } from '../services/rssService';
 import jxnuLogo from '../content/img/JXNUlogo.png';
-
-export interface CategoryNode {
-  name: string;
-  path: string;
-  feeds: FeedMeta[];
-  children: Map<string, CategoryNode>;
-  depth: number;
-}
 
 interface LeftSidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   handleBackToDashboard: () => void;
   errorMsg: string | null;
-  sidebarMode: 'list' | 'grid';
-  setSidebarMode: (mode: 'list' | 'grid') => void;
-  openFolderPath: string | null;
-  setOpenFolderPath: (path: string | null) => void;
   groupedFeeds: Map<string, CategoryNode>;
   feedContentCache: Record<string, Feed>;
   feedSummaryMap: Record<string, number>;
-  feedAvatarCache: Record<string, MediaUrl>;
+  feedAvatarCache: Record<string, string>;
   selectedFeedMeta: FeedMeta | null;
   loadingFeedId: string | null;
   handleFeedSelect: (feed: FeedMeta) => void;
-  collapsedCategories: Set<string>;
-  toggleCategoryCollapse: (path: string) => void;
   loading: boolean;
-  darkMode: boolean;
-  setDarkMode: (dark: boolean) => void;
   generatedAt: string;
   updatedCount: number;
 }
@@ -68,14 +52,14 @@ const getNodeByPath = (groupedFeeds: Map<string, CategoryNode>, path: string): C
 const getFolderPreviews = (
   node: CategoryNode,
   feedContentCache: Record<string, Feed>,
-  feedAvatarCache: Record<string, MediaUrl>
+  feedAvatarCache: Record<string, string>
 ): string[] => {
   const previews: string[] = [];
   for (const meta of node.feeds.filter((feed) => !feed.hiddenInSidebar)) {
     if (previews.length >= 4) break;
     const content = feedContentCache[meta.id];
     const cachedAvatar = feedAvatarCache[meta.id];
-    const previewUrl = getMediaUrl(content?.image || cachedAvatar);
+    const previewUrl = content?.image || cachedAvatar || '';
     previews.push(previewUrl || '/default-placeholder.svg');
   }
   if (previews.length < 4) {
@@ -102,10 +86,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   setIsSidebarOpen,
   handleBackToDashboard,
   errorMsg,
-  sidebarMode,
-  setSidebarMode,
-  openFolderPath,
-  setOpenFolderPath,
   groupedFeeds,
   feedContentCache,
   feedSummaryMap,
@@ -113,16 +93,38 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   selectedFeedMeta,
   loadingFeedId,
   handleFeedSelect,
-  collapsedCategories,
-  toggleCategoryCollapse,
   loading,
-  darkMode,
-  setDarkMode,
   generatedAt,
   updatedCount,
 }) => {
   const scrollAreaHostRef = React.useRef<HTMLDivElement | null>(null);
   const [nowTs, setNowTs] = React.useState(() => Date.now());
+
+  const [sidebarMode, setSidebarMode] = React.useState<'list' | 'grid'>('list');
+  const [openFolderPath, setOpenFolderPath] = React.useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = React.useState<Set<string>>(new Set());
+  const [darkMode, setDarkMode] = React.useState<boolean>(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  const toggleCategoryCollapse = React.useCallback((value: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
 
   React.useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 60000);
@@ -222,7 +224,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="grid grid-cols-2 gap-1.5 mb-3">
             {[0, 1, 2, 3].map(i => (
               <div key={i} className="aspect-square bg-muted rounded-lg overflow-hidden">
-                {previews[i] ? <img src={proxyImageUrl(previews[i])} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" /> : <div className="w-full h-full" />}
+                {previews[i] ? <img src={previews[i]} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" /> : <div className="w-full h-full" />}
               </div>
             ))}
           </div>
@@ -319,16 +321,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     );
   };
 
+  React.useEffect(() => {
+    if (openFolderPath && !getNodeByPath(groupedFeeds, openFolderPath)) {
+      setOpenFolderPath(null);
+    }
+  }, [openFolderPath, groupedFeeds, setOpenFolderPath]);
+
   return (
     <>
       <AnimatePresence>
-        {isSidebarOpen && window.innerWidth < 1024 && (
-          <motion.div 
+        {isSidebarOpen && (
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden" 
-            onClick={() => setIsSidebarOpen(false)} 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
           />
         )}
       </AnimatePresence>
@@ -386,7 +394,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               (() => {
                 if (openFolderPath) {
                   const currentNode = getNodeByPath(groupedFeeds, openFolderPath);
-                  if (!currentNode) { setOpenFolderPath(null); return null; }
+                  if (!currentNode) return null;
                   const childrenArray = Array.from(currentNode.children.values());
                   return (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">

@@ -1,13 +1,15 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Article, ArticleCategory } from '../types';
-import { getMediaUrl } from '../services/rssService';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Calendar, ExternalLink, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTimeWindowState, formatTimestamp } from "@/lib/time-window";
+import { CountdownBar } from './CountdownBar';
 import jxnuLogo from '../content/img/JXNUlogo.png';
 import { renderHighlightedText, renderSimpleMarkdown } from '../lib/simple-markdown';
 import { getResponsiveCoverAttrs } from '../services/responsiveImage';
+import { useNow } from '../hooks/use-now';
 
 interface ArticleCardProps {
   article: Article;
@@ -18,7 +20,6 @@ interface ArticleCardProps {
   onTagClick?: (tag: string) => void;
   activeCategoryFilters?: string[];
   activeTagFilters?: string[];
-  nowTs?: number;
   searchQuery?: string;
   priorityImage?: boolean;
   showSchoolTag?: boolean;
@@ -35,7 +36,6 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
   onTagClick,
   activeCategoryFilters = [],
   activeTagFilters = [],
-  nowTs = Date.now(),
   searchQuery = '',
   priorityImage = false,
   showSchoolTag = false,
@@ -44,9 +44,9 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
 }) => {
   const [imgError, setImgError] = useState(false);
 
-  const thumbnailUrl = getMediaUrl(article.thumbnail);
+  const thumbnailUrl = article.thumbnail || '';
   const isPlaceholderCover = Boolean(article.isPlaceholderCover);
-  const hasValidThumbnail = !imgError && Boolean(article.thumbnail?.original);
+  const hasValidThumbnail = !imgError && Boolean(article.thumbnail);
   const compactLogoMode = isPlaceholderCover || /\/img\/schoolicon\//.test(thumbnailUrl) || /\/JXNUlogo\.png$/.test(thumbnailUrl);
   const showFullCover = hasValidThumbnail && !compactLogoMode;
   const placeholderCover = thumbnailUrl || jxnuLogo;
@@ -67,7 +67,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
   const titleHtml = useMemo(() => renderHighlightedText(article.title, searchQuery), [article.title, searchQuery]);
 
   const formattedDateTime = useMemo(() => {
-    return new Date(article.pubDate).toLocaleString([], {
+    return new Date(article.pubDate).toLocaleString('zh-CN', {
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
@@ -81,11 +81,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
     return /^RT\s/i.test(article.title) || /^Re\s/i.test(article.title);
   }, [article.title]);
 
-  const handleClick = useCallback(() => {
-    onClick();
-  }, [onClick]);
-
-  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onClick();
@@ -109,68 +105,10 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
 
   const isCategoryActive = activeCategoryFilters.includes(primaryCategory);
 
-  const formatEndTime = useCallback((value?: string) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  }, []);
+  const hasTimeWindow = Boolean(article.startAt && article.endAt);
+  const nowTs = useNow(hasTimeWindow, 1000);
 
-  const formatStartTime = useCallback((value?: string) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  }, []);
-
-  const getCountdownText = useCallback((endAt?: string) => {
-    if (!endAt) return '';
-    const end = new Date(endAt).getTime();
-    if (!Number.isFinite(end)) return '';
-    const remain = Math.max(0, end - nowTs);
-    const totalSeconds = Math.floor(remain / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (days > 0) return `${days}天${hours}小时`;
-    if (hours > 0) return `${hours}小时${minutes}分`;
-    if (totalSeconds < 600) {
-      if (minutes > 0) return `${minutes}分${seconds}秒`;
-      return `${seconds}秒`;
-    }
-    return `${Math.max(1, minutes)}分钟`;
-  }, [nowTs]);
-
-  const timing = useMemo(() => {
-    if (!article.startAt || !article.endAt) return { state: 'none' as const, progress: 0 };
-    const start = new Date(article.startAt).getTime();
-    const end = new Date(article.endAt).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return { state: 'none' as const, progress: 0 };
-    if (nowTs < start) return { state: 'upcoming' as const, progress: 0 };
-    if (nowTs > end) return { state: 'expired' as const, progress: 100 };
-    const progress = Math.max(0, Math.min(100, ((nowTs - start) / (end - start)) * 100));
-    return { state: 'active' as const, progress };
-  }, [article.endAt, article.startAt, nowTs]);
-
-  const countdownLabel = useMemo(() => `剩余 ${getCountdownText(article.endAt)}`, [article.endAt, getCountdownText]);
-  const countdownWhiteMix = useMemo(() => {
-    const ratio = (timing.progress - 45) / 15;
-    return Math.max(0, Math.min(1, ratio));
-  }, [timing.progress]);
+  const timing = useMemo(() => getTimeWindowState(article.startAt, article.endAt, nowTs), [article.startAt, article.endAt, nowTs]);
 
   const pinnedLabel = useMemo(() => {
     if (!article.pinned) return '';
@@ -199,7 +137,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
         <div
           role="button"
           tabIndex={0}
-          onClick={handleClick}
+          onClick={onClick}
           onKeyDown={handleKeyDown}
           aria-label={`阅读文章: ${article.title}`}
           className="relative flex flex-col h-full w-full cursor-pointer touch-manipulation"
@@ -217,7 +155,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
                   className="w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-105"
                   onError={() => setImgError(true)}
                 />
-            ) : (imgError && Boolean(article.thumbnail?.original)) ? (
+            ) : (imgError && Boolean(article.thumbnail)) ? (
               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-muted/20 text-muted-foreground">
                 <ImageOff className="w-8 h-8" aria-hidden="true" />
                 <span className="text-xs font-medium">封面加载失败</span>
@@ -318,32 +256,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
         
         <CardFooter className={cn('px-4 border-t border-border/50 mt-auto', timing.state === 'active' ? 'py-2' : 'h-12 py-0', timing.state !== 'active' && 'flex items-center justify-between')}>
           {timing.state === 'active' ? (
-            <div className="w-full space-y-1.5">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="inline-flex items-center px-2 py-0.5 rounded bg-primary text-primary-foreground font-bold">限时</span>
-                <span className="text-muted-foreground">截止 {formatEndTime(article.endAt)}</span>
-              </div>
-              <div className="relative w-full h-5 rounded-full bg-muted overflow-hidden border border-border/40">
-                <motion.div
-                  className="h-full bg-[repeating-linear-gradient(45deg,hsl(var(--primary))_0_8px,hsl(var(--primary)/0.78)_8px_16px)]"
-                  style={{ width: `${timing.progress}%` }}
-                  animate={{ backgroundPositionX: [0, 24] }}
-                  transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold">
-                  <span className="relative leading-none">
-                    <span className="text-foreground">{countdownLabel}</span>
-                    <span
-                      className="absolute inset-0 text-primary-foreground transition-opacity"
-                      style={{ opacity: countdownWhiteMix }}
-                      aria-hidden="true"
-                    >
-                      {countdownLabel}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            </div>
+            <CountdownBar progress={timing.progress} endAt={article.endAt} nowTs={nowTs} size="sm" />
           ) : (
             <>
               <div className="flex items-center gap-2 text-[13px] leading-none text-muted-foreground font-medium">
@@ -352,7 +265,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
               </div>
               {timing.state === 'upcoming' ? (
                 <span className="text-[10px] px-2 py-0.5 rounded border border-sky-300/80 bg-sky-50 text-sky-700 font-bold dark:border-sky-300/60 dark:bg-sky-500/20 dark:text-sky-100">
-                  将于 {formatStartTime(article.startAt)} 开始
+                  将于 {formatTimestamp(article.startAt)} 开始
                 </span>
               ) : timing.state === 'expired' ? (
                 <span className="text-[10px] px-2 py-0.5 rounded border border-rose-300/80 bg-rose-50 text-rose-700 font-bold dark:border-rose-300/60 dark:bg-rose-500/20 dark:text-rose-100">已过期</span>

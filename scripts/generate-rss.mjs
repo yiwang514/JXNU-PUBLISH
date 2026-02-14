@@ -31,29 +31,32 @@ const escapeXml = (value) => String(value || '')
 
 const toRfc822 = (isoLike) => {
   const date = new Date(isoLike);
-  if (Number.isNaN(date.getTime())) return new Date().toUTCString();
+  if (Number.isNaN(date.getTime())) {
+    console.warn(`[generate-rss] Invalid date "${isoLike}", falling back to current time`);
+    return new Date().toUTCString();
+  }
   return date.toUTCString();
 };
 
 const sortedNotices = (notices) => {
   return [...notices].sort((a, b) => {
-    const aTs = new Date(a.published).getTime();
-    const bTs = new Date(b.published).getTime();
+    const aTs = new Date(a.pubDate).getTime();
+    const bTs = new Date(b.pubDate).getTime();
     const diff = (Number.isFinite(bTs) ? bTs : 0) - (Number.isFinite(aTs) ? aTs : 0);
     if (diff !== 0) return diff;
-    return String(b.id || '').localeCompare(String(a.id || ''), 'zh-CN');
+    return String(b.guid || '').localeCompare(String(a.guid || ''), 'zh-CN');
   });
 };
 
 const toItemXml = (notice) => {
   const schoolSlug = String(notice.schoolSlug || '').trim();
-  const id = String(notice.id || '').trim();
+  const id = String(notice.guid || '').trim();
   const title = String(notice.title || '').trim();
   const description = String(notice.description || '').trim();
   const itemUrl = `${SITE_URL}/school/${encodeURIComponent(schoolSlug)}#${encodeURIComponent(id)}`;
-  const pubDate = toRfc822(notice.published);
+  const pubDate = toRfc822(notice.pubDate);
   const tags = Array.isArray(notice.tags) ? notice.tags : [];
-  const schoolName = String(notice.schoolName || schoolSlug || '未分类');
+  const schoolName = String(notice.feedTitle || schoolSlug || '未分类');
 
   const categories = [schoolName, ...tags]
     .map((tag) => `<category>${escapeXml(tag)}</category>`)
@@ -96,7 +99,12 @@ const toFeedXml = ({ title, description, linkPath, selfPath, notices }) => {
 
 const main = async () => {
   const raw = await fs.readFile(GENERATED_CONTENT_PATH, 'utf8');
-  const data = JSON.parse(raw);
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`Failed to parse ${GENERATED_CONTENT_PATH}: ${err.message}`);
+  }
 
   const notices = Array.isArray(data.notices) ? data.notices : [];
   const schools = Array.isArray(data.schools) ? data.schools : [];

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import {
   Calendar,
   ChevronLeft,
@@ -18,6 +19,8 @@ import { Article } from '../types';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { getTimeWindowState, formatTimestamp } from '@/lib/time-window';
+import { CountdownBar } from './CountdownBar';
 import jxnuLogo from '../content/img/JXNUlogo.png';
 import { renderSimpleMarkdown } from '../lib/simple-markdown';
 
@@ -45,30 +48,10 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
   const [nowTs, setNowTs] = React.useState(() => Date.now());
   const openedAtRef = React.useRef(0);
   const modalBodyRef = React.useRef<HTMLDivElement | null>(null);
-  const isTextSelectingRef = React.useRef(false);
-  const selectionLockUntilRef = React.useRef(0);
   const isCoarsePointer = React.useMemo(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    if (!window.matchMedia) return false;
     return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
   }, []);
-
-  // Store latest callback props in refs so the keydown effect doesn't
-  // need to re-register every time the parent re-renders (which happens
-  // every second due to the global nowTs timer).  Re-running the effect
-  // would toggle document.body.style.overflow and cause a page reflow
-  // that clears any active text selection.
-  const onCloseRef = React.useRef(onClose);
-  const onPrevRef = React.useRef(onPrev);
-  const onNextRef = React.useRef(onNext);
-  const canPrevRef = React.useRef(canPrev);
-  const canNextRef = React.useRef(canNext);
-  React.useEffect(() => {
-    onCloseRef.current = onClose;
-    onPrevRef.current = onPrev;
-    onNextRef.current = onNext;
-    canPrevRef.current = canPrev;
-    canNextRef.current = canNext;
-  });
 
   React.useEffect(() => {
     if (!article) return;
@@ -81,119 +64,18 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
     if (isCoarsePointer) return;
 
     const timer = window.setInterval(() => {
-      if (isTextSelectingRef.current) return;
-      if (Date.now() < selectionLockUntilRef.current) return;
       setNowTs(Date.now());
     }, 1000);
     return () => window.clearInterval(timer);
   }, [article, isCoarsePointer]);
 
-  React.useEffect(() => {
-    if (!article) return;
-
-    const handleSelectionChange = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-        if (Date.now() > selectionLockUntilRef.current) {
-          isTextSelectingRef.current = false;
-        }
-        return;
-      }
-
-      const anchor = selection.anchorNode;
-      const focus = selection.focusNode;
-      const host = modalBodyRef.current;
-      if (!host || !anchor || !focus) {
-        if (Date.now() > selectionLockUntilRef.current) {
-          isTextSelectingRef.current = false;
-        }
-        return;
-      }
-
-      const inModal = host.contains(anchor) || host.contains(focus);
-      isTextSelectingRef.current = inModal;
-      if (inModal) {
-        selectionLockUntilRef.current = Date.now() + 12000;
-      }
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-      isTextSelectingRef.current = false;
-      selectionLockUntilRef.current = 0;
-    };
-  }, [article]);
-
   const handleOverlayClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     if (Date.now() - openedAtRef.current < 250) return;
-    onCloseRef.current();
-  }, []);
+    onClose();
+  }, [onClose]);
 
-  const formatEndTime = React.useCallback((value?: string) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  }, []);
-
-  const formatStartTime = React.useCallback((value?: string) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  }, []);
-
-  const getCountdownText = React.useCallback((endAt?: string) => {
-    if (!endAt) return '';
-    const end = new Date(endAt).getTime();
-    if (!Number.isFinite(end)) return '';
-    const remain = Math.max(0, end - nowTs);
-    const totalSeconds = Math.floor(remain / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (days > 0) return `${days}天${hours}小时`;
-    if (hours > 0) return `${hours}小时${minutes}分`;
-    if (totalSeconds < 600) {
-      if (minutes > 0) return `${minutes}分${seconds}秒`;
-      return `${seconds}秒`;
-    }
-    return `${Math.max(1, minutes)}分钟`;
-  }, [nowTs]);
-
-  const timing = React.useMemo(() => {
-    if (!article?.startAt || !article?.endAt) return { state: 'none' as const, progress: 0 };
-    const now = nowTs;
-    const start = new Date(article.startAt).getTime();
-    const end = new Date(article.endAt).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return { state: 'none' as const, progress: 0 };
-    if (now < start) return { state: 'upcoming' as const, progress: 0 };
-    if (now > end) return { state: 'expired' as const, progress: 100 };
-    const progress = Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100));
-    return { state: 'active' as const, progress };
-  }, [article?.endAt, article?.startAt, nowTs]);
-
-  const countdownLabel = React.useMemo(() => `剩余 ${getCountdownText(article?.endAt)}`, [article?.endAt, getCountdownText]);
-  const countdownWhiteMix = React.useMemo(() => {
-    const ratio = (timing.progress - 45) / 15;
-    return Math.max(0, Math.min(1, ratio));
-  }, [timing.progress]);
+  const timing = React.useMemo(() => getTimeWindowState(article?.startAt, article?.endAt, nowTs), [article?.startAt, article?.endAt, nowTs]);
 
   React.useEffect(() => {
     if (!article) return;
@@ -213,9 +95,9 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
     if (!article) return undefined;
 
     const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current();
-      if (event.key === 'ArrowLeft' && canPrevRef.current) onPrevRef.current();
-      if (event.key === 'ArrowRight' && canNextRef.current) onNextRef.current();
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'ArrowLeft' && canPrev) onPrev();
+      if (event.key === 'ArrowRight' && canNext) onNext();
     };
 
     const previousOverflow = document.body.style.overflow;
@@ -226,7 +108,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeydown);
     };
-  }, [article]);
+  }, [article, onClose, onPrev, onNext, canPrev, canNext]);
 
   const handleShare = async () => {
     if (!article) return;
@@ -285,11 +167,43 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
   };
 
   const descriptionHtml = React.useMemo(
-    () => renderSimpleMarkdown(article?.description || ''),
+    () => DOMPurify.sanitize(renderSimpleMarkdown(article?.description || '')),
     [article?.description]
+  );
+
+  const sanitizedContent = React.useMemo(
+    () => (article?.content ? DOMPurify.sanitize(article.content) : ''),
+    [article?.content]
   );
   const sourceChannelText = String(article?.source?.channel || article?.feedTitle || '未知群号').trim() || '未知群号';
   const sourceSenderText = String(article?.source?.sender || article?.author || '未知发布人').trim() || '未知发布人';
+
+  const navButtons = (
+    <>
+      <Button variant="outline" size="icon" onClick={onPrev} disabled={!canPrev} className="h-10 w-10">
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Button variant="outline" size="icon" onClick={onNext} disabled={!canNext} className="h-10 w-10">
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </>
+  );
+
+  const dateDisplay = article ? (
+    <div className="inline-flex items-center gap-1 text-sm text-muted-foreground min-w-0">
+      <Calendar className="h-4 w-4 shrink-0" />
+      <span className="truncate">{new Date(article.pubDate).toLocaleString('zh-CN')}</span>
+    </div>
+  ) : null;
+
+  const actionButtons = (
+    <div className="flex items-center gap-2 shrink-0">
+      <Button variant="ghost" className="gap-2 h-10 px-3" onClick={handleShare}>
+        <Share2 className="h-4 w-4" /> 分享
+      </Button>
+      <Button onClick={onClose} className="h-10 px-4">关闭</Button>
+    </div>
+  );
 
   return (
     <AnimatePresence>
@@ -339,41 +253,12 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
             <ScrollArea className="flex-1">
               <div
                 ref={modalBodyRef}
-                onTouchStart={() => {
-                  selectionLockUntilRef.current = Date.now() + 12000;
-                }}
-                onMouseDown={() => {
-                  selectionLockUntilRef.current = Date.now() + 8000;
-                }}
-                className="mx-auto w-full max-w-3xl min-w-0 max-w-full overflow-x-auto p-5 md:p-8"
+                className="mx-auto w-full max-w-3xl min-w-0 overflow-x-auto p-5 md:p-8"
               >
                 <div className="flex flex-wrap gap-2 mb-4">
                   {timing.state === 'active' && (
-                    <div className="w-full mb-2 space-y-1.5">
-                      <div className="flex items-center justify-between text-[12px]">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-primary text-primary-foreground font-bold">限时</span>
-                        <span className="text-muted-foreground">截止 {formatEndTime(article.endAt)}</span>
-                      </div>
-                      <div className="relative w-full h-6 rounded-full bg-muted overflow-hidden border border-border/40">
-                        <motion.div
-                          className="h-full bg-[repeating-linear-gradient(45deg,hsl(var(--primary))_0_8px,hsl(var(--primary)/0.75)_8px_16px)]"
-                          style={{ width: `${timing.progress}%` }}
-                          animate={{ backgroundPositionX: [0, 24] }}
-                          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
-                          <span className="relative leading-none">
-                            <span className="text-foreground">{countdownLabel}</span>
-                            <span
-                              className="absolute inset-0 text-primary-foreground transition-opacity"
-                              style={{ opacity: countdownWhiteMix }}
-                              aria-hidden="true"
-                            >
-                              {countdownLabel}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
+                    <div className="w-full mb-2">
+                      <CountdownBar progress={timing.progress} endAt={article.endAt} nowTs={nowTs} size="md" />
                     </div>
                   )}
                   {timing.state === 'expired' && (
@@ -381,7 +266,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                   )}
                   {timing.state === 'upcoming' && (
                     <span className="text-[11px] px-2 py-1 rounded border border-sky-300/80 bg-sky-50 text-sky-700 font-bold dark:border-sky-300/60 dark:bg-sky-500/20 dark:text-sky-100">
-                      将于 {formatStartTime(article.startAt)} 开始
+                      将于 {formatTimestamp(article.startAt)} 开始
                     </span>
                   )}
                   {article.aiCategory && (
@@ -454,7 +339,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                 <p className="mb-4 text-sm italic text-muted-foreground">以下为通知原文：</p>
 
                 <article className="prose prose-slate max-w-none text-base leading-relaxed dark:prose-invert overflow-x-hidden prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-all prose-p:break-words prose-p:[overflow-wrap:anywhere] prose-li:break-words prose-li:[overflow-wrap:anywhere] prose-headings:break-words prose-headings:[overflow-wrap:anywhere] prose-a:break-all prose-img:max-w-full prose-table:block prose-table:max-w-full prose-table:overflow-x-auto">
-                  <div dangerouslySetInnerHTML={{ __html: article.content }} />
+                  <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
                 </article>
 
                 <p className="mt-4 text-sm italic text-muted-foreground">{`————转发信息来源：${sourceChannelText}、发送者：${sourceSenderText}`}</p>
@@ -463,50 +348,20 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
             </ScrollArea>
 
             <footer className="px-4 py-3 md:px-6 border-t bg-background shrink-0">
+              {/* Mobile: nav above, date + actions below */}
               <div className="flex items-center justify-center gap-2 lg:hidden mb-3">
-                <Button variant="outline" size="icon" onClick={onPrev} disabled={!canPrev} className="h-10 w-10">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={onNext} disabled={!canNext} className="h-10 w-10">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                {navButtons}
               </div>
-
               <div className="flex items-center justify-between gap-3 lg:hidden">
-                <div className="inline-flex items-center gap-1 text-sm text-muted-foreground min-w-0">
-                  <Calendar className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{new Date(article.pubDate).toLocaleString('zh-CN')}</span>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="ghost" className="gap-2 h-10 px-3" onClick={handleShare}>
-                    <Share2 className="h-4 w-4" /> 分享
-                  </Button>
-                  <Button onClick={onClose} className="h-10 px-4">关闭</Button>
-                </div>
+                {dateDisplay}
+                {actionButtons}
               </div>
 
+              {/* Desktop: date | nav | actions in one row */}
               <div className="hidden lg:flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-1 text-sm text-muted-foreground min-w-0">
-                  <Calendar className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{new Date(article.pubDate).toLocaleString('zh-CN')}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" onClick={onPrev} disabled={!canPrev} className="h-10 w-10">
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={onNext} disabled={!canNext} className="h-10 w-10">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="ghost" className="gap-2 h-10 px-3" onClick={handleShare}>
-                    <Share2 className="h-4 w-4" /> 分享
-                  </Button>
-                  <Button onClick={onClose} className="h-10 px-4">关闭</Button>
-                </div>
+                {dateDisplay}
+                <div className="flex items-center gap-2">{navButtons}</div>
+                {actionButtons}
               </div>
             </footer>
           </motion.div>

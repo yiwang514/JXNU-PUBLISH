@@ -131,7 +131,7 @@ pnpm run preview          # 预览构建产物
 | `category` | 否 | string | 分类，如 `通知公告`、`问卷填表`、`活动竞赛` 等 |
 | `tags` | 否 | string[] | 业务标签，建议 2~4 个，最多 5 个 |
 | `pinned` | 否 | boolean | 是否置顶，默认 `false`，Bot 不得自动置顶 |
-| `cover` | 否 | string | 封面图路径，如 `/img/init-jan/xxx.jpg`。多图时取第一张 |
+| `cover` | 否 | string | 封面图路径，如 `/img/xxx.jpg`。多图时取第一张 |
 | `badge` | 否 | string | 角标文本 |
 | `extra_url` | 否 | string | 外部链接 |
 | `start_at` | 否 | ISO8601 | 活动/截止开始时间，仅日期时补 `00:00:00+08:00` |

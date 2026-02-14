@@ -14,23 +14,19 @@ marked.use({
 });
 
 const ROOT = process.cwd();
+const UNKNOWN_SOURCE = '未知来源';
+const UNKNOWN_SCHOOL = 'unknown';
 const CONTENT_DIR = path.join(ROOT, 'content');
 const CARD_DIR = path.join(CONTENT_DIR, 'card');
 const CARD_COVERS_DIR = path.join(CARD_DIR, 'covers');
 const CONCLUSION_DIR = path.join(CONTENT_DIR, 'conclusion');
 const CONTENT_IMG_DIR = path.join(CONTENT_DIR, 'img');
 const CONTENT_ATTACHMENTS_DIR = path.join(CONTENT_DIR, 'attachments');
-const INIT_SEPT_FILE_DIR = path.join(ROOT, 'init-sept', 'file');
-const INIT_OCT_FILE_DIR = path.join(ROOT, 'init-oct', 'file');
-const INIT_NOV_FILE_DIR = path.join(ROOT, 'init-nov', 'file');
 const PUBLIC_GENERATED_DIR = path.join(ROOT, 'public', 'generated');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const PUBLIC_IMG_DIR = path.join(PUBLIC_DIR, 'img');
 const PUBLIC_COVERS_DIR = path.join(PUBLIC_DIR, 'covers');
 const PUBLIC_ATTACHMENTS_DIR = path.join(PUBLIC_DIR, 'attachments');
-const PUBLIC_INIT_SEPT_FILE_DIR = path.join(PUBLIC_DIR, 'init-sept', 'file');
-const PUBLIC_INIT_OCT_FILE_DIR = path.join(PUBLIC_DIR, 'init-oct', 'file');
-const PUBLIC_INIT_NOV_FILE_DIR = path.join(PUBLIC_DIR, 'init-nov', 'file');
 const CONFIG_PATH = path.join(ROOT, 'config', 'subscriptions.yaml');
 
 const fail = (message, filePath) => {
@@ -48,8 +44,9 @@ const walkMarkdownFiles = async (dir) => {
       return [];
     }));
     return nested.flat();
-  } catch {
-    return [];
+  } catch (err) {
+    console.error(`[walkMarkdownFiles] Failed to read directory ${dir}: ${err.message}`);
+    throw err;
   }
 };
 
@@ -70,25 +67,16 @@ const toBoolean = (value, fallback = false) => {
   return fallback;
 };
 
-const normalizeAttachmentUrl = (value) => {
+const normalizeAttachmentUrl = (value, filePath) => {
   const clean = String(value || '').trim().replace(/\\/g, '/');
   if (!clean) return '';
   if (clean === '#') return clean;
+  if (clean.includes('..')) fail(`Suspicious path: ${clean}`, filePath);
   if (/^https?:\/\//i.test(clean)) return clean;
 
   if (clean.startsWith('/attachments/')) return clean;
   if (clean.startsWith('./attachments/')) return `/attachments/${clean.slice('./attachments/'.length)}`;
   if (clean.startsWith('attachments/')) return `/attachments/${clean.slice('attachments/'.length)}`;
-
-  if (
-    clean.startsWith('/init-sept/file/')
-    || clean.startsWith('/init-oct/file/')
-    || clean.startsWith('/init-nov/file/')
-    || clean.startsWith('/init-dec/file/')
-    || clean.startsWith('/init-jan/file/')
-  ) {
-    return clean;
-  }
 
   if (clean.startsWith('/')) return clean;
 
@@ -103,7 +91,7 @@ const normalizeAttachments = (attachments, filePath) => {
     if (typeof item === 'string') {
       const clean = item.trim();
       if (!clean) fail(`Attachment at index ${index} is empty`, filePath);
-      const normalizedUrl = normalizeAttachmentUrl(clean);
+      const normalizedUrl = normalizeAttachmentUrl(clean, filePath);
       return {
         name: path.basename(normalizedUrl),
         url: normalizedUrl,
@@ -115,7 +103,7 @@ const normalizeAttachments = (attachments, filePath) => {
     const name = String(item.name || '').trim();
     const url = String(item.url || '').trim();
     if (!name || !url) fail(`Attachment at index ${index} missing name or url`, filePath);
-    const normalizedUrl = normalizeAttachmentUrl(url);
+    const normalizedUrl = normalizeAttachmentUrl(url, filePath);
 
     return {
       name,
@@ -284,7 +272,7 @@ const parseConfig = async () => {
       });
     }
 
-    const unknownSourceSuffix = slugifyChannel('未知来源');
+    const unknownSourceSuffix = slugifyChannel(UNKNOWN_SOURCE);
     const unknownSourceId = `${school.slug}-${unknownSourceSuffix}`;
     const hasUnknownSource = subscriptions.some((item) => item.id === unknownSourceId);
     if (!hasUnknownSource) {
@@ -293,7 +281,7 @@ const parseConfig = async () => {
         schoolSlug: school.slug,
         schoolName: school.name,
         schoolIcon: school.icon,
-        title: '未知来源',
+        title: UNKNOWN_SOURCE,
         number: '',
         url: '',
         icon: '/img/subicon/group-default.svg',
@@ -340,10 +328,10 @@ const loadCards = async ({ schoolMap, subscriptionMap }) => {
     seen.add(id);
 
     const rawSchoolSlug = String(parsed.data.school_slug || '').trim();
-    const schoolSlug = rawSchoolSlug && schoolMap.has(rawSchoolSlug) ? rawSchoolSlug : 'unknown';
+    const schoolSlug = rawSchoolSlug && schoolMap.has(rawSchoolSlug) ? rawSchoolSlug : UNKNOWN_SCHOOL;
     const school = schoolMap.get(schoolSlug);
 
-    const fallbackChannel = '未知来源';
+    const fallbackChannel = UNKNOWN_SOURCE;
     const sourceChannel = String(parsed.data.source?.channel || '').trim();
     const resolvedChannel = sourceChannel || fallbackChannel;
     const legacySubscriptionId = String(parsed.data.subscription_id || '').trim();
@@ -380,29 +368,39 @@ const loadCards = async ({ schoolMap, subscriptionMap }) => {
     const frontmatterAttachments = normalizeAttachments(parsed.data.attachments, filePath);
     const inlineAttachments = extractInlineAttachments(markdown);
 
+    const schoolName = String(school?.name || schoolSlug);
+    const schoolShortName = String(school?.shortName || schoolName);
+    const cover = String(parsed.data.cover || '');
+    const sender = String(parsed.data.source?.sender || '').trim();
+    const fallbackCover = String(school?.icon || '/img/JXNUlogo.png');
+
     notices.push({
-      id,
+      guid: id,
       schoolSlug,
-      schoolName: String(school?.name || schoolSlug),
+      schoolShortName,
       subscriptionId,
       title: String(parsed.data.title || '').trim(),
       description: String(parsed.data.description || markdownToPlainText(markdown).slice(0, 180) || '').trim(),
-      category: String(parsed.data.category || '未分类'),
+      aiCategory: String(parsed.data.category || '未分类'),
       tags: Array.isArray(parsed.data.tags) ? parsed.data.tags.map(String) : [],
       pinned: toBoolean(parsed.data.pinned ?? parsed.data.pined, false),
-      cover: String(parsed.data.cover || ''),
+      thumbnail: cover || fallbackCover,
+      isPlaceholderCover: !cover,
       badge: String(parsed.data.badge || ''),
-      extraUrl: String(parsed.data.extra_url || ''),
+      link: String(parsed.data.extra_url || ''),
       startAt: parsedStart || (parsedEnd ? publishedIso : ''),
       endAt: parsedEnd,
       source: {
         channel: sourceChannel || fallbackChannel,
-        sender: String(parsed.data.source?.sender || '').trim(),
+        sender,
       },
       attachments: mergeAttachments(frontmatterAttachments, inlineAttachments),
-      published: publishedIso,
-      contentMarkdown: markdown,
-      contentHtml: html,
+      pubDate: publishedIso,
+      author: sender || schoolName,
+      feedTitle: schoolName,
+      content: html,
+      enclosure: { link: '', type: '' },
+      _contentMarkdown: markdown,
     });
   }
 
@@ -457,15 +455,15 @@ const compile = ({ notices, conclusions, schools, subscriptions, schoolMap }) =>
   const subscriptionOrderMap = new Map(subscriptions.map((item, index) => [item.id, index]));
 
   const searchIndex = notices.map((notice) => ({
-    id: notice.id,
+    id: notice.guid,
     schoolSlug: notice.schoolSlug,
     subscriptionId: notice.subscriptionId,
     title: notice.title,
     description: notice.description,
-    category: notice.category,
+    category: notice.aiCategory,
     tags: notice.tags,
-    published: notice.published,
-    contentPlainText: markdownToPlainText(`${notice.title}\n${notice.contentMarkdown}`),
+    published: notice.pubDate,
+    contentPlainText: markdownToPlainText(`${notice.title}\n${notice._contentMarkdown}`),
   }));
 
   notices.sort((a, b) => {
@@ -474,14 +472,17 @@ const compile = ({ notices, conclusions, schools, subscriptions, schoolMap }) =>
     const subscriptionDiff = (subscriptionOrderMap.get(a.subscriptionId) ?? 9999) - (subscriptionOrderMap.get(b.subscriptionId) ?? 9999);
     if (subscriptionDiff !== 0) return subscriptionDiff;
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-    const diff = new Date(b.published).getTime() - new Date(a.published).getTime();
+    const diff = new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
     if (diff !== 0) return diff;
-    return a.id.localeCompare(b.id);
+    return a.guid.localeCompare(b.guid);
   });
+
+  // Strip internal-only field before output
+  const outputNotices = notices.map(({ _contentMarkdown, ...rest }) => rest);
 
   return {
     generatedAt: new Date().toISOString(),
-    totalNotices: notices.length,
+    totalNotices: outputNotices.length,
     schools: schools.map((item) => ({ slug: item.slug, name: item.name, shortName: item.shortName, icon: item.icon || '' })),
     subscriptions: subscriptions.map((item) => ({
       id: item.id,
@@ -494,7 +495,7 @@ const compile = ({ notices, conclusions, schools, subscriptions, schoolMap }) =>
       enabled: item.enabled,
       order: item.order,
     })),
-    notices,
+    notices: outputNotices,
     conclusionBySchool: conclusions,
     searchIndex,
   };
@@ -533,54 +534,29 @@ const writeOutputs = async (compiled) => {
 };
 
 const syncStaticAssets = async () => {
-  await fs.mkdir(PUBLIC_DIR, { recursive: true });
-  await fs.mkdir(PUBLIC_COVERS_DIR, { recursive: true });
-  await fs.mkdir(PUBLIC_IMG_DIR, { recursive: true });
-  await fs.mkdir(PUBLIC_ATTACHMENTS_DIR, { recursive: true });
+  const assetPairs = [
+    [CARD_COVERS_DIR, PUBLIC_COVERS_DIR],
+    [CONTENT_IMG_DIR, PUBLIC_IMG_DIR],
+    [CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR],
+  ];
 
-  try {
-    await fs.cp(CARD_COVERS_DIR, PUBLIC_COVERS_DIR, { recursive: true, force: true });
-  } catch {
-    // ignore missing covers directory
-  }
+  await Promise.all([
+    fs.mkdir(PUBLIC_COVERS_DIR, { recursive: true }),
+    fs.mkdir(PUBLIC_IMG_DIR, { recursive: true }),
+    fs.mkdir(PUBLIC_ATTACHMENTS_DIR, { recursive: true }),
+  ]);
 
-  try {
-    await fs.cp(CONTENT_IMG_DIR, PUBLIC_IMG_DIR, { recursive: true, force: true });
-  } catch {
-    // ignore missing image directory
-  }
-
-  try {
-    await fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, { recursive: true, force: true });
-  } catch {
-    // ignore missing attachments directory
-  }
-
-  try {
-    await fs.cp(INIT_SEPT_FILE_DIR, PUBLIC_INIT_SEPT_FILE_DIR, { recursive: true, force: true });
-  } catch {
-    // ignore missing init-sept file directory
-  }
-
-  try {
-    await fs.cp(INIT_OCT_FILE_DIR, PUBLIC_INIT_OCT_FILE_DIR, { recursive: true, force: true });
-  } catch {
-    // ignore missing init-oct file directory
-  }
-
-  try {
-    await fs.cp(INIT_NOV_FILE_DIR, PUBLIC_INIT_NOV_FILE_DIR, { recursive: true, force: true });
-  } catch {
-    // ignore missing init-nov file directory
-  }
+  await Promise.all(assetPairs.map(([src, dst]) =>
+    fs.cp(src, dst, { recursive: true, force: true }).catch((err) => {
+      console.warn(`[sync] Failed to copy ${path.relative(ROOT, src)}: ${err.message}`);
+    })
+  ));
 
   const iconSource = path.join(CONTENT_IMG_DIR, 'icon.ico');
   const iconTarget = path.join(PUBLIC_DIR, 'icon.ico');
-  try {
-    await fs.copyFile(iconSource, iconTarget);
-  } catch {
-    // ignore missing icon file
-  }
+  await fs.copyFile(iconSource, iconTarget).catch((err) => {
+    console.warn(`[sync] Failed to copy icon.ico: ${err.message}`);
+  });
 };
 
 const main = async () => {

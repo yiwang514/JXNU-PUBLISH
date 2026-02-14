@@ -9,7 +9,13 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(comm:*)",
-      "Bash(npm run build:content:*)"
+      "Bash(npm run build:content:*)",
+      "Bash(pnpm run validate:content:*)",
+      "Bash(npx vite build)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run build:content:*)",
+      "Bash(cd:*)",
+      "Bash(pnpm run build:rss:*)"
     ]
   }
 }

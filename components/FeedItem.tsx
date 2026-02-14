@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Feed, FeedMeta, MediaUrl } from '../types';
-import { getMediaUrl } from '../services/rssService';
+import { Feed, FeedMeta } from '../types';
 import { Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +9,7 @@ type SidebarViewMode = 'list' | 'grid';
 interface FeedItemProps {
   feedMeta: FeedMeta;
   feedContent?: Feed | null;
-  feedAvatar?: MediaUrl;
+  feedAvatar?: string;
   feedArticleCount?: number;
   mode: SidebarViewMode;
   isSelected: boolean;
@@ -21,7 +20,7 @@ interface FeedItemProps {
 export const FeedItem: React.FC<FeedItemProps> = React.memo(({ feedMeta, feedContent, feedAvatar, feedArticleCount, mode, isSelected, isLoading, onSelect }) => {
   const displayTitle = feedMeta.customTitle || feedContent?.title || feedMeta.id;
   const fallbackAvatar = useMemo(() => '/default-placeholder.svg', []);
-  const resolvedAvatar = getMediaUrl(feedContent?.image || feedAvatar) || fallbackAvatar;
+  const resolvedAvatar = feedContent?.image || feedAvatar || fallbackAvatar;
   const resolvedCount = feedContent ? feedContent.items.length : feedArticleCount;
 
   const handleClick = useCallback(() => {
@@ -74,12 +73,12 @@ export const FeedItem: React.FC<FeedItemProps> = React.memo(({ feedMeta, feedCon
   return (
     <motion.div 
       data-feed-id={feedMeta.id}
-      className={cn("relative group w-full", feedMeta.isSub && "pl-4")}
+      className={cn("relative group w-full", feedMeta.feedType === 'source' && "pl-4")}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {feedMeta.isSub && <div className="absolute left-2 top-0 bottom-1/2 w-2 border-l border-b border-border rounded-bl-md -z-10" />}
+      {feedMeta.feedType === 'source' && <div className="absolute left-2 top-0 bottom-1/2 w-2 border-l border-b border-border rounded-bl-md -z-10" />}
       <button
         onClick={handleClick}
         className={cn(
