@@ -11,6 +11,42 @@ import { useReadArticles } from './hooks/use-read-articles';
 import { useFeedData } from './hooks/use-feed-data';
 import { useArticleNavigation } from './hooks/use-article-navigation';
 
+const NotFoundPage: React.FC<{
+  title?: string;
+  description?: string;
+}> = ({
+  title = '404 页面不存在',
+  description = '你访问的链接不存在，可能已被移动或删除。',
+}) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-background text-foreground p-6 md:p-10 flex items-center justify-center">
+      <div className="w-full max-w-xl rounded-2xl border bg-card p-6 md:p-8 shadow-sm space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">JXNU Publish</p>
+        <h1 className="text-2xl md:text-3xl font-black tracking-tight">{title}</h1>
+        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-bold"
+          >
+            返回首页
+          </button>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="h-9 px-4 rounded-md border text-sm font-bold"
+          >
+            返回上一页
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const useCompiledData = () => {
   const [contentData, setContentData] = React.useState<CompiledContent | null>(null);
   const [searchData, setSearchData] = React.useState<SearchItem[]>([]);
@@ -85,12 +121,12 @@ const AppShell: React.FC<{
   );
 
   const selectedFeedMeta = React.useMemo(() => {
-    const fallback = feedConfigs[0] || null;
-    if (!slug) return fallback;
+    if (!feedConfigs.length) return null;
+    if (!slug) return feedConfigs[0] || null;
     return feedConfigs.find((meta) => meta.id === slug)
       || feedConfigs.find((meta) => meta.routeSlug === slug && meta.feedType === 'summary')
       || feedConfigs.find((meta) => meta.routeSlug === slug)
-      || fallback;
+      || null;
   }, [feedConfigs, slug]);
 
   const selectedFeed = selectedFeedMeta ? getFeed(selectedFeedMeta.id) || null : null;
@@ -135,10 +171,17 @@ const AppShell: React.FC<{
     navigate(`/school/${schoolSlug}`);
   }, [navigate, resetFilters]);
 
-  if (!selectedFeedMeta || !selectedFeed) return <Navigate to="/" replace />;
+  if (!selectedFeedMeta || !selectedFeed) {
+    return (
+      <NotFoundPage
+        title="未找到对应订阅源"
+        description="该学院或订阅源链接无效，请返回首页重新选择。"
+      />
+    );
+  }
 
   return (
-    <div className="flex h-[100dvh] bg-background font-sans text-foreground overflow-hidden relative transition-colors duration-300">
+    <div className="flex h-[100dvh] bg-background font-sans text-foreground overflow-hidden relative">
       <LeftSidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -290,7 +333,7 @@ const App: React.FC = () => {
       <Route path="/" element={<AppShell mode="list" contentData={contentData} searchData={searchData} />} />
       <Route path="/school/:slug" element={<AppShell mode="list" contentData={contentData} searchData={searchData} />} />
       <Route path="/dashboard" element={<AppShell mode="dashboard" contentData={contentData} searchData={searchData} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

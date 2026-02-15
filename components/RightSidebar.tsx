@@ -215,7 +215,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = React.memo(({
       )}>
         <div className="p-4 border-b flex items-center justify-between lg:hidden shrink-0">
           <h3 className="text-sm font-black uppercase tracking-widest">侧边面板</h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="关闭右侧栏" title="关闭右侧栏">
             <X className="w-5 h-5" />
           </Button>
         </div>

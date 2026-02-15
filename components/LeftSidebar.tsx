@@ -358,6 +358,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const [darkMode, setDarkMode] = React.useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
+  const hasSyncedThemeRef = React.useRef(false);
 
   const toggleCategoryCollapse = React.useCallback((value: string) => {
     setCollapsedCategories((prev) => {
@@ -369,13 +370,35 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   }, []);
 
   React.useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    const root = document.documentElement;
+    const applyTheme = () => {
+      root.classList.toggle('dark', darkMode);
+      localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    };
+
+    if (!hasSyncedThemeRef.current) {
+      hasSyncedThemeRef.current = true;
+      applyTheme();
+      return;
     }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const docWithTransition = document as Document & {
+      startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+    };
+
+    if (reduceMotion || typeof docWithTransition.startViewTransition !== 'function') {
+      applyTheme();
+      return;
+    }
+
+    root.classList.add('theme-switching');
+    const transition = docWithTransition.startViewTransition(() => {
+      applyTheme();
+    });
+    transition.finished.finally(() => {
+      root.classList.remove('theme-switching');
+    });
   }, [darkMode]);
 
   React.useEffect(() => {
@@ -465,7 +488,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </div>
               <h1 className="text-xl md:text-2xl leading-none font-black tracking-tight whitespace-nowrap">JXNU PUBLISH</h1>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarOpen(false)}
+              className="h-8 w-8"
+              aria-label="关闭左侧栏"
+              title="关闭左侧栏"
+            >
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -520,7 +550,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         </div>
 
         <div className="p-3 border-t bg-muted/20 flex items-center gap-3">
-          <Button variant="outline" size="icon" className="h-10 w-10 md:h-9 md:w-9" onClick={() => setDarkMode(!darkMode)} title={darkMode ? "切换到浅色模式" : "切换到深色模式"}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 md:h-9 md:w-9"
+            onClick={() => setDarkMode(!darkMode)}
+            title={darkMode ? "切换到浅色模式" : "切换到深色模式"}
+            aria-label={darkMode ? "切换到浅色模式" : "切换到深色模式"}
+          >
             {darkMode ? <Sun className="w-5 h-5 md:w-4 md:h-4" /> : <Moon className="w-5 h-5 md:w-4 md:h-4" />}
           </Button>
           <div className="relative min-w-0 flex-1 rounded-xl border bg-background/90 px-3 py-2 shadow-sm">

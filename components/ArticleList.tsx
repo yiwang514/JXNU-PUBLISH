@@ -192,7 +192,14 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
       <header className="h-16 px-4 md:px-8 flex items-center justify-between bg-background/80 backdrop-blur-md border-b sticky top-0 z-20 shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
           {!isSidebarOpen && (
-            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)} className="shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarOpen(true)}
+              className="shrink-0"
+              aria-label="打开左侧栏"
+              title="打开左侧栏"
+            >
               <PanelLeft className="w-5 h-5" />
             </Button>
           )}

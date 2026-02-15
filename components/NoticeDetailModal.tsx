@@ -165,10 +165,26 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
 
   const navButtons = (
     <>
-      <Button variant="outline" size="icon" onClick={onPrev} disabled={!canPrev} className="h-8 w-8 md:h-10 md:w-10">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={onPrev}
+        disabled={!canPrev}
+        className="h-8 w-8 md:h-10 md:w-10"
+        aria-label="上一条通知"
+        title="上一条通知"
+      >
         <ChevronLeft className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </Button>
-      <Button variant="outline" size="icon" onClick={onNext} disabled={!canNext} className="h-8 w-8 md:h-10 md:w-10">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={onNext}
+        disabled={!canNext}
+        className="h-8 w-8 md:h-10 md:w-10"
+        aria-label="下一条通知"
+        title="下一条通知"
+      >
         <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </Button>
     </>
@@ -229,7 +245,14 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 md:h-10 md:w-10">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8 md:h-10 md:w-10"
+                  aria-label="关闭详情"
+                  title="关闭详情"
+                >
                   <X className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </Button>
               </div>

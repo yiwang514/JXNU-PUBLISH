@@ -25,6 +25,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
             className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={() => onDateSelect(null)}
             title="清除选择"
+            aria-label="清除日期筛选"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </Button>
