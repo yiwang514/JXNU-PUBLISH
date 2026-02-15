@@ -325,7 +325,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
             <>
               {mobileCardLayout === 'waterfall' ? (
                 <>
-                  <div className="mx-auto max-w-7xl columns-2 [column-gap:0.75rem] md:hidden">
+                  <div className="mx-auto max-w-7xl columns-2 max-[360px]:columns-1 [column-gap:0.75rem] md:hidden">
                     {paginatedArticlesWithCategory.map((article) => (
                       <div key={article.guid} className="mb-3 break-inside-avoid">
                         <ArticleCard

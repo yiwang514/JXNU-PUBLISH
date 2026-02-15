@@ -161,7 +161,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
             <div className="px-3 pt-3">
               <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5">
                 <p
-                  className="text-[12px] leading-5 text-foreground/85 line-clamp-8 [&_a]:text-primary [&_a]:underline [&_strong]:font-semibold [&_mark]:rounded-sm [&_mark]:bg-amber-200/80 [&_mark]:text-foreground [&_mark]:px-0.5"
+                  className="text-[12px] leading-5 text-foreground/85 line-clamp-8 break-words [overflow-wrap:anywhere] [&_a]:text-primary [&_a]:underline [&_strong]:font-semibold [&_mark]:rounded-sm [&_mark]:bg-amber-200/80 [&_mark]:text-foreground [&_mark]:px-0.5"
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               </div>
@@ -296,7 +296,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
           <h3
             className={cn(
               "font-bold leading-tight md:group-hover:text-primary transition-colors [&_mark]:rounded-sm [&_mark]:bg-amber-200/80 [&_mark]:text-foreground [&_mark]:px-0.5",
-              isCompactNoCover ? "text-[15px] line-clamp-4" : "text-xl line-clamp-2"
+              isCompactNoCover ? "text-[15px] line-clamp-4 break-words [overflow-wrap:anywhere]" : "text-xl line-clamp-2 break-words [overflow-wrap:anywhere]"
             )}
             dangerouslySetInnerHTML={{ __html: titleHtml }}
           />

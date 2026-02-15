@@ -35,7 +35,7 @@ export const FilterBar: React.FC<FilterBarProps> = React.memo(({
       size="sm"
       onClick={onClick}
       className={cn(
-        "relative h-7 sm:h-8 rounded-full px-3 sm:px-4 text-[11px] sm:text-xs font-bold whitespace-nowrap border overflow-hidden transition-colors hover:bg-transparent",
+        "relative h-8 rounded-full px-3 sm:px-4 text-[10px] sm:text-xs leading-none font-bold whitespace-nowrap border overflow-hidden transition-colors hover:bg-transparent",
         "border-transparent"
       )}
     >
