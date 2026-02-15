@@ -465,8 +465,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </div>
               <h1 className="text-xl md:text-2xl leading-none font-black tracking-tight whitespace-nowrap">JXNU PUBLISH</h1>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="lg:hidden">
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8">
+              <X className="w-4 h-4" />
             </Button>
           </div>
           {errorMsg && <div className="text-[9px] mt-1 py-1 px-2 rounded bg-destructive/10 text-destructive font-bold">{errorMsg}</div>}
