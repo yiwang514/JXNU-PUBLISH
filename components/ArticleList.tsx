@@ -6,7 +6,9 @@ import {
   Filter, 
   Search,
   RefreshCw, 
-  ArrowUp 
+  ArrowUp,
+  LayoutGrid,
+  List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,8 @@ interface ArticleListProps {
   totalCount?: number;
   isAllSchoolsView?: boolean;
   onSchoolSummaryJump?: (schoolSlug?: string) => void;
+  mobileCardLayout: 'list' | 'waterfall';
+  onMobileCardLayoutChange: (mode: 'list' | 'waterfall') => void;
 }
 
 const ArticleListComponent: React.FC<ArticleListProps> = ({
@@ -77,6 +81,8 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   totalCount,
   isAllSchoolsView = false,
   onSchoolSummaryJump,
+  mobileCardLayout,
+  onMobileCardLayoutChange,
 }) => {
   const [pullDistance, setPullDistance] = React.useState(0);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
@@ -233,6 +239,28 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
           >
             {isRightSidebarOpen ? <PanelRight className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
           </Button>
+          <div className="md:hidden flex items-center rounded-full border bg-background p-0.5">
+            <Button
+              variant={mobileCardLayout === 'waterfall' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onMobileCardLayoutChange('waterfall')}
+              className="h-8 w-8 p-0 rounded-full"
+              title="双列瀑布流"
+              aria-label="切换为双列瀑布流"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant={mobileCardLayout === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onMobileCardLayoutChange('list')}
+              className="h-8 w-8 p-0 rounded-full"
+              title="单列列表"
+              aria-label="切换为单列列表"
+            >
+              <List className="w-3.5 h-3.5" />
+            </Button>
+          </div>
           <Button
             variant={isRightSidebarOpen ? "default" : "outline"}
             size="sm"
@@ -294,26 +322,74 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
               )}
             </div>
           ) : (
-            <div className="grid grid-flow-row grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-              {paginatedArticlesWithCategory.map((article, index) => (
-                <ArticleCard
-                  key={article.guid}
-                  article={article}
-                  isSelected={false}
-                  isRead={readArticleIds.has(article.guid)}
-                  onClick={() => handleArticleSelect(article)}
-                  onCategoryClick={onCategorySelect}
-                  onTagClick={onTagSelect}
-                  activeCategoryFilters={activeFilters}
-                  activeTagFilters={activeTagFilters}
-                  searchQuery={searchQuery}
-                  priorityImage={currentPage === 1 && index < 2}
-                  showSchoolTag={isAllSchoolsView}
-                  onSchoolTagClick={onSchoolSummaryJump}
-                  isAllSchoolsView={isAllSchoolsView}
-                />
-              ))}
-            </div>
+            <>
+              {mobileCardLayout === 'waterfall' ? (
+                <>
+                  <div className="mx-auto max-w-7xl columns-2 [column-gap:0.75rem] md:hidden">
+                    {paginatedArticlesWithCategory.map((article) => (
+                      <div key={article.guid} className="mb-3 break-inside-avoid">
+                        <ArticleCard
+                          article={article}
+                          isSelected={false}
+                          isRead={readArticleIds.has(article.guid)}
+                          onClick={() => handleArticleSelect(article)}
+                          onCategoryClick={onCategorySelect}
+                          onTagClick={onTagSelect}
+                          activeCategoryFilters={activeFilters}
+                          activeTagFilters={activeTagFilters}
+                          searchQuery={searchQuery}
+                          showSchoolTag={isAllSchoolsView}
+                          onSchoolTagClick={onSchoolSummaryJump}
+                          isAllSchoolsView={isAllSchoolsView}
+                          variant="compactNoCover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:grid grid-flow-row md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                    {paginatedArticlesWithCategory.map((article, index) => (
+                      <ArticleCard
+                        key={article.guid}
+                        article={article}
+                        isSelected={false}
+                        isRead={readArticleIds.has(article.guid)}
+                        onClick={() => handleArticleSelect(article)}
+                        onCategoryClick={onCategorySelect}
+                        onTagClick={onTagSelect}
+                        activeCategoryFilters={activeFilters}
+                        activeTagFilters={activeTagFilters}
+                        searchQuery={searchQuery}
+                        priorityImage={currentPage === 1 && index < 2}
+                        showSchoolTag={isAllSchoolsView}
+                        onSchoolTagClick={onSchoolSummaryJump}
+                        isAllSchoolsView={isAllSchoolsView}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-flow-row grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                  {paginatedArticlesWithCategory.map((article, index) => (
+                    <ArticleCard
+                      key={article.guid}
+                      article={article}
+                      isSelected={false}
+                      isRead={readArticleIds.has(article.guid)}
+                      onClick={() => handleArticleSelect(article)}
+                      onCategoryClick={onCategorySelect}
+                      onTagClick={onTagSelect}
+                      activeCategoryFilters={activeFilters}
+                      activeTagFilters={activeTagFilters}
+                      searchQuery={searchQuery}
+                      priorityImage={currentPage === 1 && index < 2}
+                      showSchoolTag={isAllSchoolsView}
+                      onSchoolTagClick={onSchoolSummaryJump}
+                      isAllSchoolsView={isAllSchoolsView}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {/* Pagination */}

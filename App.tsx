@@ -61,8 +61,16 @@ const AppShell: React.FC<{
 
   const [isSidebarOpen, setIsSidebarOpen] = React.useState<boolean>(window.innerWidth >= 1024);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = React.useState<boolean>(window.innerWidth >= 1024);
+  const [mobileCardLayout, setMobileCardLayout] = React.useState<'list' | 'waterfall'>(() => {
+    const saved = localStorage.getItem('mobile-card-layout');
+    return saved === 'list' ? 'list' : 'waterfall';
+  });
   const [loadingFeedId, setLoadingFeedId] = React.useState<string | null>(null);
   const articleListRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    localStorage.setItem('mobile-card-layout', mobileCardLayout);
+  }, [mobileCardLayout]);
 
   const { readArticleIdsRef, markArticleRead } = useReadArticles();
 
@@ -201,6 +209,8 @@ const AppShell: React.FC<{
               totalCount={selectedFeed.items.length}
               isAllSchoolsView={isAllSchoolsView}
               onSchoolSummaryJump={handleSchoolSummaryJump}
+              mobileCardLayout={mobileCardLayout}
+              onMobileCardLayoutChange={setMobileCardLayout}
             />
           )}
         </div>
