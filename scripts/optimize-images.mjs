@@ -72,6 +72,16 @@ const optimizeOne = async (urlPath) => {
     return { skipped: true, reason: 'missing' };
   }
 
+  await fs.mkdir(path.dirname(outputBase), { recursive: true });
+
+  if (absInput === sourcePath) {
+    const shouldCopySource = !(await pathExists(outputBase))
+      || (await fs.stat(outputBase)).mtimeMs < (await fs.stat(sourcePath)).mtimeMs;
+    if (shouldCopySource) {
+      await fs.copyFile(sourcePath, outputBase);
+    }
+  }
+
   const inputStat = await fs.stat(absInput);
 
   const ext = path.extname(outputBase);
@@ -143,7 +153,7 @@ const main = async () => {
   const coverUrls = Array.from(
     new Set(
       notices
-        .map((item) => String(item.cover || '').trim())
+        .map((item) => String(item.cover || item.thumbnail || '').trim())
         .filter(isRasterCoverUrl)
     )
   );
