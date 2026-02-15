@@ -1,13 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  List, 
-  LayoutGrid, 
-  ChevronLeft, 
-  ChevronRight, 
-  Folder, 
-  FolderOpen,
+import {
+  X,
+  List,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
+  Folder,
   Sun,
   Moon,
   RefreshCw
@@ -20,11 +19,9 @@ import { CategoryNode } from '../hooks/use-feed-data';
 import { cn } from "@/lib/utils";
 import jxnuLogo from '../content/img/JXNUlogo.png';
 
-interface LeftSidebarProps {
-  isSidebarOpen: boolean;
-  setIsSidebarOpen: (open: boolean) => void;
-  handleBackToDashboard: () => void;
-  errorMsg: string | null;
+/* ── Shared types ── */
+
+interface SidebarFeedProps {
   groupedFeeds: Map<string, CategoryNode>;
   feedContentCache: Record<string, Feed>;
   feedSummaryMap: Record<string, number>;
@@ -32,10 +29,9 @@ interface LeftSidebarProps {
   selectedFeedMeta: FeedMeta | null;
   loadingFeedId: string | null;
   handleFeedSelect: (feed: FeedMeta) => void;
-  loading: boolean;
-  generatedAt: string;
-  updatedCount: number;
 }
+
+/* ── Pure helpers ── */
 
 const getNodeByPath = (groupedFeeds: Map<string, CategoryNode>, path: string): CategoryNode | null => {
   const parts = path.split('/').filter(Boolean);
@@ -81,118 +77,16 @@ const countAllFeeds = (node: CategoryNode): number => {
   return count;
 };
 
-export const LeftSidebar: React.FC<LeftSidebarProps> = ({
-  isSidebarOpen,
-  setIsSidebarOpen,
-  handleBackToDashboard,
-  errorMsg,
-  groupedFeeds,
-  feedContentCache,
-  feedSummaryMap,
-  feedAvatarCache,
-  selectedFeedMeta,
-  loadingFeedId,
-  handleFeedSelect,
-  loading,
-  generatedAt,
-  updatedCount,
+/* ── Grid view ── */
+
+const SidebarGridView: React.FC<SidebarFeedProps & {
+  openFolderPath: string | null;
+  setOpenFolderPath: (path: string | null) => void;
+}> = ({
+  groupedFeeds, feedContentCache, feedSummaryMap, feedAvatarCache,
+  selectedFeedMeta, loadingFeedId, handleFeedSelect,
+  openFolderPath, setOpenFolderPath,
 }) => {
-  const scrollAreaHostRef = React.useRef<HTMLDivElement | null>(null);
-  const [nowTs, setNowTs] = React.useState(() => Date.now());
-
-  const [sidebarMode, setSidebarMode] = React.useState<'list' | 'grid'>('list');
-  const [openFolderPath, setOpenFolderPath] = React.useState<string | null>(null);
-  const [collapsedCategories, setCollapsedCategories] = React.useState<Set<string>>(new Set());
-  const [darkMode, setDarkMode] = React.useState<boolean>(() => {
-    return localStorage.getItem('theme') === 'dark';
-  });
-
-  const toggleCategoryCollapse = React.useCallback((value: string) => {
-    setCollapsedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
-  }, []);
-
-  React.useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
-
-  React.useEffect(() => {
-    const timer = window.setInterval(() => setNowTs(Date.now()), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const elapsedSinceGenerated = React.useMemo(() => {
-    const generated = new Date(generatedAt).getTime();
-    if (!Number.isFinite(generated)) {
-      return {
-        hours: 0,
-        minutes: 0,
-      };
-    }
-
-    const delta = Math.max(0, nowTs - generated);
-    const totalSeconds = Math.floor(delta / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-    return { hours, minutes };
-  }, [generatedAt, nowTs]);
-
-  const updateHealth = React.useMemo(() => {
-    if (elapsedSinceGenerated.hours >= 48) {
-      return {
-        label: '异常',
-        dotClass: 'bg-rose-500',
-        pulseClass: 'bg-rose-500/50',
-      };
-    }
-
-    if (elapsedSinceGenerated.hours >= 24) {
-      return {
-        label: '需关注',
-        dotClass: 'bg-amber-500',
-        pulseClass: 'bg-amber-500/50',
-      };
-    }
-
-    return {
-      label: '正常',
-      dotClass: 'bg-emerald-500',
-      pulseClass: 'bg-emerald-500/50',
-    };
-  }, [elapsedSinceGenerated.hours]);
-
-  const elapsedLabel = React.useMemo(() => {
-    return `上次更新：${elapsedSinceGenerated.hours}h${elapsedSinceGenerated.minutes}m 前`;
-  }, [elapsedSinceGenerated.hours, elapsedSinceGenerated.minutes]);
-
-  React.useEffect(() => {
-    const targetId = selectedFeedMeta?.id;
-    if (!targetId) return;
-
-    const host = scrollAreaHostRef.current;
-    if (!host) return;
-
-    const viewport = host.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-    if (!viewport) return;
-
-    const escapedId = targetId.replace(/"/g, '\\"');
-    const target = viewport.querySelector(`[data-feed-id="${escapedId}"]`) as HTMLElement | null;
-    if (!target) return;
-
-    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [openFolderPath, selectedFeedMeta?.id, sidebarMode]);
-
   const renderSubfolder = (node: CategoryNode) => {
     const totalCount = countAllFeeds(node);
     return (
@@ -237,6 +131,83 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     );
   };
 
+  if (openFolderPath) {
+    const currentNode = getNodeByPath(groupedFeeds, openFolderPath);
+    if (!currentNode) return null;
+    const childrenArray = Array.from(currentNode.children.values());
+    return (
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            const parts = openFolderPath.split('/').filter(Boolean);
+            setOpenFolderPath(parts.length <= 1 ? null : parts.slice(0, -1).join('/'));
+          }}
+          className="w-full justify-start gap-2 text-primary font-bold"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="truncate">{currentNode.name}</span>
+        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          {currentNode.feeds.filter((feed) => !feed.hiddenInSidebar).map(meta => (
+            <FeedItem
+              key={meta.id}
+              feedMeta={meta}
+              feedContent={feedContentCache[meta.id] || null}
+              feedAvatar={feedAvatarCache[meta.id]}
+              feedArticleCount={feedSummaryMap[meta.id]}
+              mode="grid"
+              isSelected={selectedFeedMeta?.id === meta.id}
+              isLoading={loadingFeedId === meta.id}
+              onSelect={handleFeedSelect}
+            />
+          ))}
+          {childrenArray.map(child => renderSubfolder(child))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  const rootNodes = Array.from(groupedFeeds.entries());
+  const uncategorized = rootNodes.find(([key]) => key === '__uncategorized__');
+  const categories = rootNodes.filter(([key]) => key !== '__uncategorized__');
+  return (
+    <div className="space-y-6">
+      {uncategorized && uncategorized[1].feeds.filter((feed) => !feed.hiddenInSidebar).length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {uncategorized[1].feeds.filter((feed) => !feed.hiddenInSidebar).map(meta => (
+            <FeedItem
+              key={meta.id}
+              feedMeta={meta}
+              feedContent={feedContentCache[meta.id] || null}
+              feedAvatar={feedAvatarCache[meta.id]}
+              feedArticleCount={feedSummaryMap[meta.id]}
+              mode="grid"
+              isSelected={selectedFeedMeta?.id === meta.id}
+              isLoading={loadingFeedId === meta.id}
+              onSelect={handleFeedSelect}
+            />
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        {categories.map(([, node]) => renderFolder(node))}
+      </div>
+    </div>
+  );
+};
+
+/* ── List view ── */
+
+const SidebarListView: React.FC<SidebarFeedProps & {
+  collapsedCategories: Set<string>;
+  toggleCategoryCollapse: (key: string) => void;
+}> = ({
+  groupedFeeds, feedContentCache, feedSummaryMap, feedAvatarCache,
+  selectedFeedMeta, loadingFeedId, handleFeedSelect,
+  collapsedCategories, toggleCategoryCollapse,
+}) => {
   const renderCategoryNode = (node: CategoryNode): React.ReactNode => {
     const isCollapsed = collapsedCategories.has(node.path);
     const visibleFeeds = node.feeds.filter((feed) => !feed.hiddenInSidebar);
@@ -297,23 +268,20 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </div>
             )}
 
-            {!isSummaryCollapsed && childFeeds.map((meta) => {
-              const content = feedContentCache[meta.id] || null;
-              return (
-                <div key={meta.id} style={{ paddingLeft: `${(node.depth + (node.name ? 1 : 0)) * 8}px` }}>
-                  <FeedItem
-                    feedMeta={meta}
-                    feedContent={content}
-                    feedAvatar={feedAvatarCache[meta.id]}
-                    feedArticleCount={feedSummaryMap[meta.id]}
-                    mode="list"
-                    isSelected={selectedFeedMeta?.id === meta.id}
-                    isLoading={loadingFeedId === meta.id}
-                    onSelect={handleFeedSelect}
-                  />
-                </div>
-              );
-            })}
+            {!isSummaryCollapsed && childFeeds.map((meta) => (
+              <div key={meta.id} style={{ paddingLeft: `${(node.depth + (node.name ? 1 : 0)) * 8}px` }}>
+                <FeedItem
+                  feedMeta={meta}
+                  feedContent={feedContentCache[meta.id] || null}
+                  feedAvatar={feedAvatarCache[meta.id]}
+                  feedArticleCount={feedSummaryMap[meta.id]}
+                  mode="list"
+                  isSelected={selectedFeedMeta?.id === meta.id}
+                  isLoading={loadingFeedId === meta.id}
+                  onSelect={handleFeedSelect}
+                />
+              </div>
+            ))}
             {childrenArray.map((child) => renderCategoryNode(child))}
           </div>
         )}
@@ -321,11 +289,154 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     );
   };
 
+  const rootNodes = Array.from(groupedFeeds.entries());
+  return (
+    <>
+      {rootNodes.map(([key, node]) => {
+        if (key === '__uncategorized__') {
+          return node.feeds.filter((feed) => !feed.hiddenInSidebar).map(meta => (
+            <FeedItem
+              key={meta.id}
+              feedMeta={meta}
+              feedContent={feedContentCache[meta.id] || null}
+              feedAvatar={feedAvatarCache[meta.id]}
+              feedArticleCount={feedSummaryMap[meta.id]}
+              mode="list"
+              isSelected={selectedFeedMeta?.id === meta.id}
+              isLoading={loadingFeedId === meta.id}
+              onSelect={handleFeedSelect}
+            />
+          ));
+        }
+        return renderCategoryNode(node);
+      })}
+    </>
+  );
+};
+
+/* ── Main sidebar ── */
+
+interface LeftSidebarProps {
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
+  handleBackToDashboard: () => void;
+  errorMsg: string | null;
+  groupedFeeds: Map<string, CategoryNode>;
+  feedContentCache: Record<string, Feed>;
+  feedSummaryMap: Record<string, number>;
+  feedAvatarCache: Record<string, string>;
+  selectedFeedMeta: FeedMeta | null;
+  loadingFeedId: string | null;
+  handleFeedSelect: (feed: FeedMeta) => void;
+  loading: boolean;
+  generatedAt: string;
+  updatedCount: number;
+}
+
+export const LeftSidebar: React.FC<LeftSidebarProps> = ({
+  isSidebarOpen,
+  setIsSidebarOpen,
+  handleBackToDashboard,
+  errorMsg,
+  groupedFeeds,
+  feedContentCache,
+  feedSummaryMap,
+  feedAvatarCache,
+  selectedFeedMeta,
+  loadingFeedId,
+  handleFeedSelect,
+  loading,
+  generatedAt,
+  updatedCount,
+}) => {
+  const scrollAreaHostRef = React.useRef<HTMLDivElement | null>(null);
+  const [nowTs, setNowTs] = React.useState(() => Date.now());
+
+  const [sidebarMode, setSidebarMode] = React.useState<'list' | 'grid'>('list');
+  const [openFolderPath, setOpenFolderPath] = React.useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = React.useState<Set<string>>(new Set());
+  const [darkMode, setDarkMode] = React.useState<boolean>(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  const toggleCategoryCollapse = React.useCallback((value: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNowTs(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const elapsedSinceGenerated = React.useMemo(() => {
+    const generated = new Date(generatedAt).getTime();
+    if (!Number.isFinite(generated)) {
+      return { hours: 0, minutes: 0 };
+    }
+    const delta = Math.max(0, nowTs - generated);
+    const totalSeconds = Math.floor(delta / 1000);
+    return {
+      hours: Math.floor(totalSeconds / 3600),
+      minutes: Math.floor((totalSeconds % 3600) / 60),
+    };
+  }, [generatedAt, nowTs]);
+
+  const updateHealth = React.useMemo(() => {
+    if (elapsedSinceGenerated.hours >= 48) {
+      return { label: '异常', dotClass: 'bg-rose-500', pulseClass: 'bg-rose-500/50' };
+    }
+    if (elapsedSinceGenerated.hours >= 24) {
+      return { label: '需关注', dotClass: 'bg-amber-500', pulseClass: 'bg-amber-500/50' };
+    }
+    return { label: '正常', dotClass: 'bg-emerald-500', pulseClass: 'bg-emerald-500/50' };
+  }, [elapsedSinceGenerated.hours]);
+
+  const elapsedLabel = React.useMemo(() => {
+    return `上次更新：${elapsedSinceGenerated.hours}h${elapsedSinceGenerated.minutes}m 前`;
+  }, [elapsedSinceGenerated.hours, elapsedSinceGenerated.minutes]);
+
+  React.useEffect(() => {
+    const targetId = selectedFeedMeta?.id;
+    if (!targetId) return;
+
+    const host = scrollAreaHostRef.current;
+    if (!host) return;
+
+    const viewport = host.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    if (!viewport) return;
+
+    const escapedId = targetId.replace(/"/g, '\\"');
+    const target = viewport.querySelector(`[data-feed-id="${escapedId}"]`) as HTMLElement | null;
+    if (!target) return;
+
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [openFolderPath, selectedFeedMeta?.id, sidebarMode]);
+
   React.useEffect(() => {
     if (openFolderPath && !getNodeByPath(groupedFeeds, openFolderPath)) {
       setOpenFolderPath(null);
     }
-  }, [openFolderPath, groupedFeeds, setOpenFolderPath]);
+  }, [openFolderPath, groupedFeeds]);
+
+  const sharedFeedProps: SidebarFeedProps = {
+    groupedFeeds, feedContentCache, feedSummaryMap, feedAvatarCache,
+    selectedFeedMeta, loadingFeedId, handleFeedSelect,
+  };
 
   return (
     <>
@@ -391,103 +502,17 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         <ScrollArea className="h-full px-3 py-4">
           <div className="space-y-1">
             {sidebarMode === 'grid' ? (
-              (() => {
-                if (openFolderPath) {
-                  const currentNode = getNodeByPath(groupedFeeds, openFolderPath);
-                  if (!currentNode) return null;
-                  const childrenArray = Array.from(currentNode.children.values());
-                  return (
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const parts = openFolderPath.split('/').filter(Boolean);
-                          setOpenFolderPath(parts.length <= 1 ? null : parts.slice(0, -1).join('/'));
-                        }}
-                        className="w-full justify-start gap-2 text-primary font-bold"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span className="truncate">{currentNode.name}</span>
-                      </Button>
-                      <div className="grid grid-cols-2 gap-3">
-                        {currentNode.feeds.filter((feed) => !feed.hiddenInSidebar).map(meta => {
-                          const content = feedContentCache[meta.id] || null;
-                          return (
-                            <FeedItem
-                              key={meta.id}
-                              feedMeta={meta}
-                              feedContent={content}
-                              feedAvatar={feedAvatarCache[meta.id]}
-                              feedArticleCount={feedSummaryMap[meta.id]}
-                              mode="grid"
-                              isSelected={selectedFeedMeta?.id === meta.id}
-                              isLoading={loadingFeedId === meta.id}
-                              onSelect={handleFeedSelect}
-                            />
-                          );
-                        })}
-                        {childrenArray.map(child => renderSubfolder(child))}
-                      </div>
-                    </motion.div>
-                  );
-                }
-                const rootNodes = Array.from(groupedFeeds.entries());
-                const uncategorized = rootNodes.find(([key]) => key === '__uncategorized__');
-                const categories = rootNodes.filter(([key]) => key !== '__uncategorized__');
-                return (
-                  <div className="space-y-6">
-                    {uncategorized && uncategorized[1].feeds.filter((feed) => !feed.hiddenInSidebar).length > 0 && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {uncategorized[1].feeds.filter((feed) => !feed.hiddenInSidebar).map(meta => {
-                          const content = feedContentCache[meta.id] || null;
-                          return (
-                            <FeedItem
-                              key={meta.id}
-                              feedMeta={meta}
-                              feedContent={content}
-                              feedAvatar={feedAvatarCache[meta.id]}
-                              feedArticleCount={feedSummaryMap[meta.id]}
-                              mode="grid"
-                              isSelected={selectedFeedMeta?.id === meta.id}
-                              isLoading={loadingFeedId === meta.id}
-                              onSelect={handleFeedSelect}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                      {categories.map(([, node]) => renderFolder(node))}
-                    </div>
-                  </div>
-                );
-              })()
+              <SidebarGridView
+                {...sharedFeedProps}
+                openFolderPath={openFolderPath}
+                setOpenFolderPath={setOpenFolderPath}
+              />
             ) : (
-              (() => {
-                const rootNodes = Array.from(groupedFeeds.entries());
-                return rootNodes.map(([key, node]) => {
-                  if (key === '__uncategorized__') {
-                    return node.feeds.filter((feed) => !feed.hiddenInSidebar).map(meta => {
-                      const content = feedContentCache[meta.id] || null;
-                      return (
-                        <FeedItem
-                          key={meta.id}
-                          feedMeta={meta}
-                          feedContent={content}
-                          feedAvatar={feedAvatarCache[meta.id]}
-                          feedArticleCount={feedSummaryMap[meta.id]}
-                          mode="list"
-                          isSelected={selectedFeedMeta?.id === meta.id}
-                          isLoading={loadingFeedId === meta.id}
-                          onSelect={handleFeedSelect}
-                        />
-                      );
-                    });
-                  }
-                  return renderCategoryNode(node);
-                });
-              })()
+              <SidebarListView
+                {...sharedFeedProps}
+                collapsedCategories={collapsedCategories}
+                toggleCategoryCollapse={toggleCategoryCollapse}
+              />
             )}
             {loading && <div className="flex justify-center p-8"><RefreshCw className="h-6 w-6 text-primary animate-spin" /></div>}
           </div>

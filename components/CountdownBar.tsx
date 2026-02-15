@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatTimestamp, getCountdownText } from '@/lib/time-window';
+import { formatTimestamp, getCountdownText, getTimeWindowState } from '@/lib/time-window';
 
 interface CountdownBarProps {
   progress: number;
@@ -54,12 +54,6 @@ export const CountdownBar: React.FC<CountdownBarProps> = React.memo(({ progress,
 
   React.useEffect(ensureCSS, []);
 
-  /**
-   * Use WAAPI to drive the progress bar width.
-   * This is more robust on mobile than CSS transitions because it runs
-   * on the compositor thread and we explicitly prevent React from
-   * overwriting the 'width' property during subsequent renders.
-   */
   React.useEffect(() => {
     const el = barRef.current;
     if (!el || !endAt) return;
@@ -72,10 +66,8 @@ export const CountdownBar: React.FC<CountdownBarProps> = React.memo(({ progress,
       return;
     }
 
-    // Set initial width
     el.style.width = `${progress}%`;
 
-    // Start long-running animation to 100%
     const anim = el.animate(
       [
         { width: `${progress}%` },
@@ -89,10 +81,7 @@ export const CountdownBar: React.FC<CountdownBarProps> = React.memo(({ progress,
     );
 
     return () => anim.cancel();
-    // We only re-run this if endAt changes. 
-    // This prevents React re-renders from interrupting the smooth animation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endAt]);
+  }, [endAt, progress]); // Re-sync if initial progress or endAt changes
 
   return (
     <div className="w-full space-y-1.5">
@@ -101,11 +90,6 @@ export const CountdownBar: React.FC<CountdownBarProps> = React.memo(({ progress,
         <span className="text-muted-foreground">截止 {formatTimestamp(endAt)}</span>
       </div>
       <div className={`relative w-full ${barHeight} rounded-full bg-muted overflow-hidden border border-border/40`}>
-        {/* 
-          The progress bar div. 
-          Note: 'width' is NOT in the style prop to prevent React from 
-          touching it after the initial mount, allowing WAAPI to control it smoothly.
-        */}
         <div
           ref={barRef}
           className="absolute inset-y-0 left-0 cdb-stripe-animate"
@@ -114,7 +98,6 @@ export const CountdownBar: React.FC<CountdownBarProps> = React.memo(({ progress,
           }}
         />
         
-        {/* Text overlay */}
         <div className={`absolute inset-0 flex items-center justify-center ${textSize} font-semibold pointer-events-none`}>
           <span className="relative leading-none">
             <span className="text-foreground">{countdownLabel}</span>
@@ -131,3 +114,33 @@ export const CountdownBar: React.FC<CountdownBarProps> = React.memo(({ progress,
     </div>
   );
 });
+
+CountdownBar.displayName = 'CountdownBar';
+
+/**
+ * Smart wrapper that handles its own timer.
+ * Prevents the parent component from re-rendering every second.
+ */
+export const LiveCountdownBar: React.FC<{ startAt?: string; endAt?: string; size: 'sm' | 'md' }> = React.memo(({ startAt, endAt, size }) => {
+  const [nowTs, setNowTs] = React.useState(() => Date.now());
+
+  React.useEffect(() => {
+    if (!endAt) return;
+    const endMs = new Date(endAt).getTime();
+    if (Date.now() >= endMs) return;
+
+    const timer = setInterval(() => {
+      setNowTs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [endAt]);
+
+  const timing = React.useMemo(() => getTimeWindowState(startAt, endAt, nowTs), [startAt, endAt, nowTs]);
+
+  if (timing.state !== 'active') return null;
+
+  return <CountdownBar progress={timing.progress} endAt={endAt} nowTs={nowTs} size={size} />;
+});
+
+LiveCountdownBar.displayName = 'LiveCountdownBar';

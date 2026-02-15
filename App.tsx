@@ -80,8 +80,8 @@ const AppShell: React.FC<{
     const fallback = feedConfigs[0] || null;
     if (!slug) return fallback;
     return feedConfigs.find((meta) => meta.id === slug)
-      || feedConfigs.find((meta) => meta.schoolSlug === slug && meta.feedType === 'summary')
-      || feedConfigs.find((meta) => meta.schoolSlug === slug)
+      || feedConfigs.find((meta) => meta.routeSlug === slug && meta.feedType === 'summary')
+      || feedConfigs.find((meta) => meta.routeSlug === slug)
       || fallback;
   }, [feedConfigs, slug]);
 
@@ -117,8 +117,7 @@ const AppShell: React.FC<{
         navigate('/');
         return;
       }
-      const routeSlug = meta.feedType === 'summary' && meta.schoolSlug ? meta.schoolSlug : meta.id;
-      navigate(`/school/${routeSlug}`);
+      navigate(`/school/${meta.routeSlug}`);
     }, 120);
   }, [navigate, resetFilters, selectedFeedMeta?.id]);
 
@@ -241,7 +240,11 @@ const AppShell: React.FC<{
         canNext={activeIndex >= 0 && activeIndex < filteredArticles.length - 1}
         shareUrl={
           activeArticle && selectedFeedMeta
-            ? `${window.location.origin}/school/${selectedFeedMeta.id === 'all-schools' ? (activeArticle.schoolSlug || selectedFeedMeta.id) : (selectedFeedMeta.feedType === 'summary' && selectedFeedMeta.schoolSlug ? selectedFeedMeta.schoolSlug : selectedFeedMeta.id)}#${activeArticle.guid}`
+            ? `${window.location.origin}/school/${
+                selectedFeedMeta.id === 'all-schools'
+                  ? (activeArticle.schoolSlug || selectedFeedMeta.routeSlug)
+                  : selectedFeedMeta.routeSlug
+              }#${activeArticle.guid}`
             : ''
         }
       />

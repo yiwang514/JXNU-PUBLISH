@@ -67,6 +67,7 @@ export interface FeedMeta {
   schoolSlug?: string;
   sourceChannel?: string;
   hiddenInSidebar?: boolean;
+  routeSlug: string;
 }
 
 // --- 编译后数据类型 ---

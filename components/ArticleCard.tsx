@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import { Article, ArticleCategory } from '../types';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Calendar, ExternalLink, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTimeWindowState, formatTimestamp } from "@/lib/time-window";
-import { CountdownBar } from './CountdownBar';
+import { CountdownBar, LiveCountdownBar } from './CountdownBar';
 import jxnuLogo from '../content/img/JXNUlogo.png';
 import { renderHighlightedText, renderSimpleMarkdown } from '../lib/simple-markdown';
 import { getResponsiveCoverAttrs } from '../services/responsiveImage';
-import { useNow } from '../hooks/use-now';
 
 interface ArticleCardProps {
   article: Article;
@@ -63,8 +63,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
       : rawPreview || '无可用预览。';
   }, [article.description, hasValidThumbnail]);
 
-  const previewHtml = useMemo(() => renderSimpleMarkdown(preview, searchQuery), [preview, searchQuery]);
-  const titleHtml = useMemo(() => renderHighlightedText(article.title, searchQuery), [article.title, searchQuery]);
+  const previewHtml = useMemo(() => DOMPurify.sanitize(renderSimpleMarkdown(preview, searchQuery)), [preview, searchQuery]);
+  const titleHtml = useMemo(() => DOMPurify.sanitize(renderHighlightedText(article.title, searchQuery)), [article.title, searchQuery]);
 
   const formattedDateTime = useMemo(() => {
     return new Date(article.pubDate).toLocaleString('zh-CN', {
@@ -105,12 +105,15 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
 
   const isCategoryActive = activeCategoryFilters.includes(primaryCategory);
 
-  const hasTimeWindow = Boolean(article.startAt && article.endAt);
-  const nowTs = useNow(hasTimeWindow, 1000);
+      const hasTimeWindow = Boolean(article.startAt && article.endAt);
 
-  const timing = useMemo(() => getTimeWindowState(article.startAt, article.endAt, nowTs), [article.startAt, article.endAt, nowTs]);
+      const timing = useMemo(() => getTimeWindowState(article.startAt, article.endAt, Date.now()), [article.startAt, article.endAt]);
 
-  const pinnedLabel = useMemo(() => {
+  
+
+      const pinnedLabel = useMemo(() => {
+
+  
     if (!article.pinned) return '';
     if (isAllSchoolsView && article.schoolSlug && article.schoolSlug !== 'unknown') {
       const shortName = String(article.schoolShortName || article.feedTitle || '').trim();
@@ -256,7 +259,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
         
         <CardFooter className={cn('px-4 border-t border-border/50 mt-auto', timing.state === 'active' ? 'py-2' : 'h-12 py-0', timing.state !== 'active' && 'flex items-center justify-between')}>
           {timing.state === 'active' ? (
-            <CountdownBar progress={timing.progress} endAt={article.endAt} nowTs={nowTs} size="sm" />
+            <LiveCountdownBar startAt={article.startAt} endAt={article.endAt} size="sm" />
           ) : (
             <>
               <div className="flex items-center gap-2 text-[13px] leading-none text-muted-foreground font-medium">

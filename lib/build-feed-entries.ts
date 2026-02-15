@@ -16,6 +16,7 @@ export function buildFeedEntries(contentData: CompiledContent): Array<{ meta: Fe
       customTitle: '全校汇总',
       sourceChannel: '全校汇总',
       hiddenInSidebar: true,
+      routeSlug: 'all-schools',
     },
     feed: {
       url: '/',
@@ -38,6 +39,7 @@ export function buildFeedEntries(contentData: CompiledContent): Array<{ meta: Fe
         customTitle: summaryTitle,
         schoolSlug: school.slug,
         sourceChannel: summaryTitle,
+        routeSlug: school.slug,
       },
       feed: {
         url: `/school/${overviewId}`,
@@ -60,6 +62,7 @@ export function buildFeedEntries(contentData: CompiledContent): Array<{ meta: Fe
         customTitle: sourceTitle,
         schoolSlug: subscription.schoolSlug,
         sourceChannel: sourceTitle,
+        routeSlug: subscription.id,
       },
       feed: {
         url: `/school/${subscription.id}`,

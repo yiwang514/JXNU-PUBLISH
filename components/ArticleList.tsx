@@ -85,10 +85,9 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   const [pageJumpInput, setPageJumpInput] = React.useState('');
   const touchStartRef = React.useRef<number>(0);
   const rafRef = React.useRef<number | null>(null);
-  const prevPageRef = React.useRef(currentPage);
-  const prevSearchRef = React.useRef(searchQuery);
-  const prevFilterKeyRef = React.useRef(`${activeFilters.join('|')}::${activeTagFilters.join('|')}`);
-  const prevSelectedDateRef = React.useRef<number | null>(selectedDate ? selectedDate.getTime() : null);
+
+  const scrollResetKey = `${currentPage}::${activeFilters.join('|')}::${activeTagFilters.join('|')}::${searchQuery}::${selectedDate?.getTime() ?? ''}`;
+  const prevScrollResetKeyRef = React.useRef(scrollResetKey);
 
   const getViewport = React.useCallback(() => {
     return articleListRef.current?.querySelector(
@@ -97,38 +96,12 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   }, [articleListRef]);
 
   React.useEffect(() => {
+    if (prevScrollResetKeyRef.current === scrollResetKey) return;
+    prevScrollResetKeyRef.current = scrollResetKey;
     const viewport = getViewport();
     if (!viewport) return;
-    if (prevPageRef.current === currentPage) return;
-
     viewport.scrollTo({ top: 0, behavior: 'smooth' });
-    prevPageRef.current = currentPage;
-  }, [currentPage, getViewport]);
-
-  React.useEffect(() => {
-    const viewport = getViewport();
-    if (!viewport) return;
-
-    const nextFilterKey = `${activeFilters.join('|')}::${activeTagFilters.join('|')}`;
-    const searchChanged = prevSearchRef.current !== searchQuery;
-    const filterChanged = prevFilterKeyRef.current !== nextFilterKey;
-    if (!searchChanged && !filterChanged) return;
-
-    viewport.scrollTo({ top: 0, behavior: 'smooth' });
-    prevSearchRef.current = searchQuery;
-    prevFilterKeyRef.current = nextFilterKey;
-  }, [activeFilters, activeTagFilters, getViewport, searchQuery]);
-
-  React.useEffect(() => {
-    const viewport = getViewport();
-    if (!viewport) return;
-
-    const nextSelectedDateTs = selectedDate ? selectedDate.getTime() : null;
-    if (prevSelectedDateRef.current === nextSelectedDateTs) return;
-
-    viewport.scrollTo({ top: 0, behavior: 'smooth' });
-    prevSelectedDateRef.current = nextSelectedDateTs;
-  }, [getViewport, selectedDate]);
+  }, [scrollResetKey, getViewport]);
 
   const isRefreshing = isFakeRefreshing;
 

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { getTimeWindowState, formatTimestamp } from '@/lib/time-window';
-import { CountdownBar } from './CountdownBar';
+import { CountdownBar, LiveCountdownBar } from './CountdownBar';
 import jxnuLogo from '../content/img/JXNUlogo.png';
 import { renderSimpleMarkdown } from '../lib/simple-markdown';
 
@@ -45,29 +45,13 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
 }) => {
   const { toast } = useToast();
   const [badgeSrc, setBadgeSrc] = React.useState(jxnuLogo);
-  const [nowTs, setNowTs] = React.useState(() => Date.now());
   const openedAtRef = React.useRef(0);
   const modalBodyRef = React.useRef<HTMLDivElement | null>(null);
-  const isCoarsePointer = React.useMemo(() => {
-    if (!window.matchMedia) return false;
-    return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  }, []);
 
   React.useEffect(() => {
     if (!article) return;
     openedAtRef.current = Date.now();
-    setNowTs(Date.now());
-
-    const end = article.endAt ? new Date(article.endAt).getTime() : Number.NaN;
-    const needsLiveTimer = Number.isFinite(end) && Date.now() < end;
-    if (!needsLiveTimer) return;
-    if (isCoarsePointer) return;
-
-    const timer = window.setInterval(() => {
-      setNowTs(Date.now());
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [article, isCoarsePointer]);
+  }, [article]);
 
   const handleOverlayClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
@@ -75,7 +59,8 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
     onClose();
   }, [onClose]);
 
-  const timing = React.useMemo(() => getTimeWindowState(article?.startAt, article?.endAt, nowTs), [article?.startAt, article?.endAt, nowTs]);
+  // Use a static timing state for non-live elements (upcoming/expired)
+  const timing = React.useMemo(() => getTimeWindowState(article?.startAt, article?.endAt, Date.now()), [article?.startAt, article?.endAt]);
 
   React.useEffect(() => {
     if (!article) return;
@@ -256,11 +241,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                 className="mx-auto w-full max-w-3xl min-w-0 overflow-x-auto p-5 md:p-8"
               >
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {timing.state === 'active' && (
-                    <div className="w-full mb-2">
-                      <CountdownBar progress={timing.progress} endAt={article.endAt} nowTs={nowTs} size="md" />
-                    </div>
-                  )}
+                  <LiveCountdownBar startAt={article.startAt} endAt={article.endAt} size="md" />
                   {timing.state === 'expired' && (
                     <span className="text-[11px] px-2 py-1 rounded border border-rose-300/80 bg-rose-50 text-rose-700 font-bold dark:border-rose-300/60 dark:bg-rose-500/20 dark:text-rose-100">已过期</span>
                   )}
