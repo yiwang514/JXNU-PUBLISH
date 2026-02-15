@@ -34,6 +34,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     [feedEntries]
   );
 
+  const sourceFeedsForStats = React.useMemo(
+    () => sourceFeeds.filter(({ meta, feed }) => {
+      const sourceName = meta.sourceChannel || meta.customTitle || feed.title;
+      const isGlobalSummary = meta.id === 'all-schools' || sourceName === '全校汇总';
+      return !isGlobalSummary;
+    }),
+    [sourceFeeds]
+  );
+
   const totalArticles = React.useMemo(
     () => summaryFeeds.reduce((acc, item) => acc + item.feed.items.length, 0),
     [summaryFeeds]
@@ -51,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
 
   const sourceRows = React.useMemo(
-    () => sourceFeeds
+    () => sourceFeedsForStats
       .map(({ meta, feed }) => {
         const shortSchool = schoolShortNameMap[meta.schoolSlug || ''] || (meta.schoolSlug || '未知学院');
         const sourceName = meta.sourceChannel || meta.customTitle || feed.title;
@@ -62,15 +71,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         };
       })
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN')),
-    [schoolShortNameMap, sourceFeeds]
+    [schoolShortNameMap, sourceFeedsForStats]
   );
 
   const activeSourceCount = React.useMemo(
-    () => sourceFeeds.filter(({ meta, feed }) => {
+    () => sourceFeedsForStats.filter(({ meta, feed }) => {
       const sourceName = meta.sourceChannel || meta.customTitle || feed.title;
       return !/待接入/.test(sourceName);
     }).length,
-    [sourceFeeds]
+    [sourceFeedsForStats]
   );
 
   return (
