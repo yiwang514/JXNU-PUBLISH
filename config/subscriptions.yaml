@@ -10,7 +10,7 @@ schools:
       - title: 22-24级团支书
         number: "849400261"
         url: ""
-        icon: ""
+        icon: /img/schoolicon/ai.webp
         enabled: true
         order: 10
       - title: 24级计算机心委+学委
@@ -22,7 +22,7 @@ schools:
       - title: 25-26学年学生干部通知群
         number: "1041877533"
         url: ""
-        icon: ""
+        icon: /img/subicon/ai-student-cadre.webp
         enabled: true
         order: 30
   - slug: public-funded-normal
