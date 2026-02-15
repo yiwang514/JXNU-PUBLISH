@@ -165,28 +165,28 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
 
   const navButtons = (
     <>
-      <Button variant="outline" size="icon" onClick={onPrev} disabled={!canPrev} className="h-10 w-10">
-        <ChevronLeft className="h-4 w-4" />
+      <Button variant="outline" size="icon" onClick={onPrev} disabled={!canPrev} className="h-8 w-8 md:h-10 md:w-10">
+        <ChevronLeft className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </Button>
-      <Button variant="outline" size="icon" onClick={onNext} disabled={!canNext} className="h-10 w-10">
-        <ChevronRight className="h-4 w-4" />
+      <Button variant="outline" size="icon" onClick={onNext} disabled={!canNext} className="h-8 w-8 md:h-10 md:w-10">
+        <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </Button>
     </>
   );
 
   const dateDisplay = article ? (
-    <div className="inline-flex items-center gap-1 text-sm text-muted-foreground min-w-0">
-      <Calendar className="h-4 w-4 shrink-0" />
+    <div className="inline-flex items-center gap-1 text-xs md:text-sm text-muted-foreground min-w-0">
+      <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4 shrink-0" />
       <span className="truncate">{new Date(article.pubDate).toLocaleString('zh-CN')}</span>
     </div>
   ) : null;
 
   const actionButtons = (
-    <div className="flex items-center gap-2 shrink-0">
-      <Button variant="ghost" className="gap-2 h-10 px-3" onClick={handleShare}>
-        <Share2 className="h-4 w-4" /> 分享
+    <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+      <Button variant="ghost" className="gap-1.5 md:gap-2 h-8 md:h-10 px-2.5 md:px-3 text-xs md:text-sm" onClick={handleShare}>
+        <Share2 className="h-3.5 w-3.5 md:h-4 md:w-4" /> 分享
       </Button>
-      <Button onClick={onClose} className="h-10 px-4">关闭</Button>
+      <Button onClick={onClose} className="h-8 md:h-10 px-3 md:px-4 text-xs md:text-sm">关闭</Button>
     </div>
   );
 
@@ -208,9 +208,9 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
             className="mx-auto h-full max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl border bg-background shadow-2xl flex flex-col"
             onClick={(event) => event.stopPropagation()}
           >
-            <header className="flex h-16 items-center justify-between border-b px-4 md:px-6 shrink-0">
-              <div className="min-w-0 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full border bg-background overflow-hidden shrink-0">
+            <header className="flex h-[52px] md:h-16 items-center justify-between border-b px-3 md:px-6 shrink-0">
+              <div className="min-w-0 flex items-center gap-2 md:gap-3">
+                <div className="w-7 h-7 md:w-9 md:h-9 rounded-full border bg-background overflow-hidden shrink-0">
                   <img
                     src={badgeSrc}
                     alt="院徽"
@@ -220,55 +220,55 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                   />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-foreground">
+                  <p className="truncate text-xs md:text-sm font-bold text-foreground">
                     {article.author || '未知发布人'}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-[10px] md:text-xs text-muted-foreground">
                     {article.source?.channel || article.feedTitle || '通知来源'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                  <X className="h-4 w-4" />
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 md:h-10 md:w-10">
+                  <X className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </Button>
               </div>
             </header>
 
             <ScrollArea className="flex-1">
-              <div
-                ref={modalBodyRef}
-                className="mx-auto w-full max-w-3xl min-w-0 overflow-x-auto p-5 md:p-8"
-              >
-                <div className="flex flex-wrap gap-2 mb-4">
+                <div
+                  ref={modalBodyRef}
+                  className="mx-auto w-full max-w-3xl min-w-0 overflow-x-auto p-4 md:p-8"
+                >
+                <div className="flex flex-wrap gap-1.5 md:gap-2 mb-3 md:mb-4">
                   <LiveCountdownBar startAt={article.startAt} endAt={article.endAt} size="md" />
                   {timing.state === 'expired' && (
-                    <span className="text-[11px] px-2 py-1 rounded border border-rose-300/80 bg-rose-50 text-rose-700 font-bold dark:border-rose-300/60 dark:bg-rose-500/20 dark:text-rose-100">已过期</span>
+                    <span className="text-[10px] md:text-[11px] px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-rose-300/80 bg-rose-50 text-rose-700 font-bold dark:border-rose-300/60 dark:bg-rose-500/20 dark:text-rose-100">已过期</span>
                   )}
                   {timing.state === 'upcoming' && (
-                    <span className="text-[11px] px-2 py-1 rounded border border-sky-300/80 bg-sky-50 text-sky-700 font-bold dark:border-sky-300/60 dark:bg-sky-500/20 dark:text-sky-100">
+                    <span className="text-[10px] md:text-[11px] px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-sky-300/80 bg-sky-50 text-sky-700 font-bold dark:border-sky-300/60 dark:bg-sky-500/20 dark:text-sky-100">
                       将于 {formatTimestamp(article.startAt)} 开始
                     </span>
                   )}
                   {article.aiCategory && (
-                    <span className="text-[11px] bg-primary text-primary-foreground px-2 py-1 rounded border border-primary/80 font-semibold">{article.aiCategory}</span>
+                    <span className="text-[10px] md:text-[11px] bg-primary text-primary-foreground px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-primary/80 font-semibold">{article.aiCategory}</span>
                   )}
                   {(article.tags || []).filter((tag) => String(tag).trim() !== '学院通知').map((tag) => (
-                    <span key={tag} className="text-[11px] bg-muted text-foreground px-2 py-1 rounded border">#{tag}</span>
+                    <span key={tag} className="text-[10px] md:text-[11px] bg-muted text-foreground px-1.5 md:px-2 py-0.5 md:py-1 rounded border">#{tag}</span>
                   ))}
                 </div>
 
-                <h2 className="text-3xl md:text-4xl font-black leading-tight mb-4 break-words [overflow-wrap:anywhere]">{article.title}</h2>
+                <h2 className="text-2xl md:text-4xl font-black leading-tight mb-3 md:mb-4 break-words [overflow-wrap:anywhere]">{article.title}</h2>
 
                 <div
-                  className="text-base leading-relaxed text-muted-foreground mb-6 break-words [overflow-wrap:anywhere] [&_a]:text-primary [&_a]:underline [&_strong]:font-semibold"
+                  className="text-[13px] md:text-base leading-relaxed text-muted-foreground mb-5 md:mb-6 break-words [overflow-wrap:anywhere] [&_a]:text-primary [&_a]:underline [&_strong]:font-semibold"
                   dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                 />
 
                 {article.attachments && article.attachments.length > 0 && (
-                  <section className="mb-6 rounded-xl border bg-muted/20 p-4 overflow-x-auto">
-                    <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-muted-foreground">附件下载</h3>
-                    <div className="space-y-2">
+                  <section className="mb-5 md:mb-6 rounded-xl border bg-muted/20 p-3 md:p-4 overflow-x-auto">
+                    <h3 className="mb-2.5 md:mb-3 text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">附件下载</h3>
+                    <div className="space-y-1.5 md:space-y-2">
                       {article.attachments.map((attachment) => {
                         const Icon = iconForAttachment(attachment.type, attachment.name);
                         const hasLink = Boolean(attachment.url && attachment.url !== '#');
@@ -276,17 +276,17 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                           return (
                             <div
                               key={`${attachment.url}-${attachment.name}`}
-                              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 text-sm"
+                              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-background px-2.5 md:px-3 py-1.5 md:py-2 text-xs md:text-sm"
                             >
                               <div className="min-w-0 flex flex-1 items-center gap-2">
-                                <Icon className="h-4 w-4 text-primary shrink-0" />
+                                <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary shrink-0" />
                                 <div className="min-w-0">
                                   <p className="font-medium break-all leading-snug">{attachment.name}</p>
-                                  <p className="text-xs text-muted-foreground">{attachment.type || 'file'}</p>
+                                  <p className="text-[10px] md:text-xs text-muted-foreground">{attachment.type || 'file'}</p>
                                 </div>
                               </div>
-                              <span className="inline-flex shrink-0 items-center gap-1 text-primary text-xs font-bold">
-                                已记录 <Download className="h-3.5 w-3.5" />
+                              <span className="inline-flex shrink-0 items-center gap-1 text-primary text-[10px] md:text-xs font-bold">
+                                已记录 <Download className="h-3 w-3 md:h-3.5 md:w-3.5" />
                               </span>
                             </div>
                           );
@@ -298,17 +298,17 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                             href={attachment.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 text-sm hover:border-primary/50"
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-background px-2.5 md:px-3 py-1.5 md:py-2 text-xs md:text-sm hover:border-primary/50"
                           >
                             <div className="min-w-0 flex flex-1 items-center gap-2">
-                              <Icon className="h-4 w-4 text-primary shrink-0" />
+                              <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary shrink-0" />
                               <div className="min-w-0">
                                 <p className="font-medium break-all leading-snug">{attachment.name}</p>
-                                <p className="text-xs text-muted-foreground">{attachment.type || 'file'}</p>
+                                <p className="text-[10px] md:text-xs text-muted-foreground">{attachment.type || 'file'}</p>
                               </div>
                             </div>
-                            <span className="inline-flex shrink-0 items-center gap-1 text-primary text-xs font-bold">
-                              下载 <Download className="h-3.5 w-3.5" />
+                            <span className="inline-flex shrink-0 items-center gap-1 text-primary text-[10px] md:text-xs font-bold">
+                              下载 <Download className="h-3 w-3 md:h-3.5 md:w-3.5" />
                             </span>
                           </a>
                         );
@@ -317,20 +317,20 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                   </section>
                 )}
 
-                <p className="mb-4 text-sm italic text-muted-foreground">以下为通知原文：</p>
+                <p className="mb-3 md:mb-4 text-xs md:text-sm italic text-muted-foreground">以下为通知原文：</p>
 
-                <article className="prose prose-slate max-w-none text-base leading-relaxed dark:prose-invert overflow-x-hidden prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-all prose-p:break-words prose-p:[overflow-wrap:anywhere] prose-li:break-words prose-li:[overflow-wrap:anywhere] prose-headings:break-words prose-headings:[overflow-wrap:anywhere] prose-a:break-all prose-img:max-w-full prose-table:block prose-table:max-w-full prose-table:overflow-x-auto">
+                <article className="prose prose-slate max-w-none text-[13px] md:text-base leading-relaxed dark:prose-invert overflow-x-hidden prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-all prose-p:break-words prose-p:[overflow-wrap:anywhere] prose-li:break-words prose-li:[overflow-wrap:anywhere] prose-headings:break-words prose-headings:[overflow-wrap:anywhere] prose-a:break-all prose-img:max-w-full prose-table:block prose-table:max-w-full prose-table:overflow-x-auto">
                   <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
                 </article>
 
-                <p className="mt-4 text-sm italic text-muted-foreground">{`————转发信息来源：${sourceChannelText}、发送者：${sourceSenderText}`}</p>
+                <p className="mt-3 md:mt-4 text-xs md:text-sm italic text-muted-foreground">{`————转发信息来源：${sourceChannelText}、发送者：${sourceSenderText}`}</p>
 
               </div>
             </ScrollArea>
 
-            <footer className="px-4 py-3 md:px-6 border-t bg-background shrink-0">
+            <footer className="px-3 md:px-6 py-2.5 md:py-3 border-t bg-background shrink-0">
               {/* Mobile: nav above, date + actions below */}
-              <div className="flex items-center justify-center gap-2 lg:hidden mb-3">
+              <div className="flex items-center justify-center gap-2 lg:hidden mb-2">
                 {navButtons}
               </div>
               <div className="flex items-center justify-between gap-3 lg:hidden">

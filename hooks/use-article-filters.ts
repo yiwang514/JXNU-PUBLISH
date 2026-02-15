@@ -49,12 +49,37 @@ export function useArticleFilterState(): ArticleFilterState {
   });
   const [searchQuery, setSearchQuery] = React.useState('');
 
+  const hasActiveFilters = Boolean(
+    selectedDate
+      || activeFilters.length > 0
+      || activeTagFilters.length > 0
+      || timedOnly
+      || hideExpired
+      || searchQuery.trim().length > 0
+  );
+
+  const lastUnfilteredPageRef = React.useRef(currentPage);
+  const prevHasActiveFiltersRef = React.useRef(hasActiveFilters);
+
+  React.useEffect(() => {
+    if (!hasActiveFilters) {
+      if (prevHasActiveFiltersRef.current) {
+        const restorePage = Math.max(1, lastUnfilteredPageRef.current || 1);
+        setCurrentPage((prev) => (prev === restorePage ? prev : restorePage));
+      } else {
+        lastUnfilteredPageRef.current = currentPage;
+      }
+    }
+    prevHasActiveFiltersRef.current = hasActiveFilters;
+  }, [currentPage, hasActiveFilters]);
+
   const resetFilters = React.useCallback(() => {
     setSelectedDate(null);
-    setCurrentPage(1);
     setSearchQuery('');
     setActiveFilters([]);
     setActiveTagFilters([]);
+    setTimedOnly(false);
+    setHideExpired(false);
   }, []);
 
   const updateFilter = React.useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T | ((prev: T) => T)) => {
@@ -141,11 +166,11 @@ export function useFilteredArticles(
   const pageParam = searchParams.get('p');
 
   React.useEffect(() => {
-    const parsed = Number(pageParam);
-    const fromQuery = Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
-    const normalized = Math.min(Math.max(fromQuery, 1), totalPages);
-    setCurrentPage((prev) => (prev === normalized ? prev : normalized));
-  }, [pageParam, setCurrentPage, totalPages]);
+    const normalized = Math.min(Math.max(currentPage, 1), totalPages);
+    if (normalized !== currentPage) {
+      setCurrentPage(normalized);
+    }
+  }, [currentPage, setCurrentPage, totalPages]);
 
   React.useEffect(() => {
     const normalized = Math.min(Math.max(currentPage, 1), totalPages);

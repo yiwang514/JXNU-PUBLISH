@@ -200,52 +200,67 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
           )}
 
           <div className={cn(
-            "z-20 flex gap-1 items-start",
+            "z-20 flex gap-1 items-start min-w-0",
             isCompactNoCover
-              ? "px-3 pt-2 max-w-full flex-nowrap overflow-hidden"
+              ? "compact-tag-rail px-3 pt-2 pb-0.5 max-w-full flex-wrap content-start max-h-[3.35rem] overflow-y-hidden overflow-x-auto"
               : "absolute top-2 left-2 max-w-[92%] flex-wrap"
           )}>
             {showSchoolTag && article.feedTitle && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSchoolTagClick?.(article.schoolSlug);
-                }}
-                className={cn(
-                  "inline-flex items-center rounded font-semibold border border-sky-600/70 bg-sky-600 text-white hover:bg-sky-700 transition-colors",
-                  isCompactNoCover
-                    ? "text-[10px] px-2 py-0.5 shrink min-w-0 max-w-[45%] truncate"
-                    : "text-[11px] px-2.5 py-0.5"
-                )}
-              >
-                {article.feedTitle}
-              </button>
+              isCompactNoCover ? (
+                <span
+                  className="inline-flex h-5 items-center justify-center text-center leading-none rounded font-semibold border border-sky-600/70 bg-sky-600 text-white text-[10px] px-2 shrink min-w-0 max-w-[45%] truncate"
+                >
+                  {article.feedTitle}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSchoolTagClick?.(article.schoolSlug);
+                  }}
+                  className="inline-flex h-6 items-center justify-center text-center leading-none rounded font-semibold border border-sky-600/70 bg-sky-600 text-white hover:bg-sky-700 transition-colors text-[11px] px-2.5"
+                >
+                  {article.feedTitle}
+                </button>
+              )
             )}
             {article.pinned && (
               <span className={cn(
-                "inline-flex items-center rounded bg-amber-100 text-amber-800 border border-amber-300 font-semibold shrink-0 whitespace-nowrap",
-                isCompactNoCover ? "text-[10px] px-1.5 py-0.5" : "text-[11px] px-2 py-0.5"
+                "inline-flex items-center justify-center text-center leading-none rounded bg-amber-100 text-amber-800 border border-amber-300 font-semibold shrink-0 whitespace-nowrap",
+                isCompactNoCover ? "h-5 text-[10px] px-1.5" : "h-6 text-[11px] px-2"
               )}>
                 {pinnedLabel}
               </span>
             )}
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onCategoryClick?.(primaryCategory);
-              }}
-              className={cn(
-                'inline-flex items-center rounded font-semibold border transition-colors shrink-0 whitespace-nowrap',
-                isCompactNoCover ? 'text-[10px] px-2 py-0.5' : 'text-[12px] px-2.5 py-0.5',
-                isCategoryActive
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-primary text-primary-foreground border-primary/80 hover:bg-primary/90'
-              )}
-            >
-              {primaryCategory}
-            </button>
+            {isCompactNoCover ? (
+              <span
+                className={cn(
+                  'inline-flex h-5 items-center justify-center text-center leading-none rounded font-semibold border shrink-0 whitespace-nowrap text-[10px] px-2',
+                  isCategoryActive
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-primary text-primary-foreground border-primary/80'
+                )}
+              >
+                {primaryCategory}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCategoryClick?.(primaryCategory);
+                }}
+                className={cn(
+                  'inline-flex h-6 items-center justify-center text-center leading-none rounded font-semibold border transition-colors shrink-0 whitespace-nowrap text-[11px] px-2.5',
+                  isCategoryActive
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-primary text-primary-foreground border-primary/80 hover:bg-primary/90'
+                )}
+              >
+                {primaryCategory}
+              </button>
+            )}
             {!isCompactNoCover && isRetweet && (
               <span className="inline-flex items-center rounded bg-secondary text-secondary-foreground text-[11px] px-1.9 py-0.5 font-semibold">
                 RT
@@ -262,7 +277,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
                     onTagClick?.(tag);
                   }}
                   className={cn(
-                    'inline-flex items-center rounded border backdrop-blur-sm text-[12px] px-2.5 py-0.5 font-medium transition-colors',
+                    'inline-flex h-6 items-center justify-center text-center leading-none rounded border backdrop-blur-sm text-[11px] px-2.5 font-medium transition-colors',
                     activeTagFilters.includes(tag)
                       ? 'bg-foreground/15 text-foreground border-foreground/25'
                       : 'bg-background/85 hover:bg-muted hover:border-foreground/25'

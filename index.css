@@ -99,3 +99,16 @@
     transform: none !important;
   }
 }
+
+.compact-tag-rail {
+  scrollbar-width: thin;
+}
+
+.compact-tag-rail::-webkit-scrollbar {
+  height: 4px;
+}
+
+.compact-tag-rail::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+}
