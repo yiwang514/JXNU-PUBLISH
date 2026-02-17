@@ -27,6 +27,7 @@ concurrency:
 
 jobs:
   deploy:
+    name: Deploy to server (existing)
     uses: ./.github/workflows/deploy-reusable.yml
     with:
       branch: main
@@ -37,3 +38,57 @@ jobs:
       DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER != '' && secrets.PROD_DEPLOY_USER || secrets.DEPLOY_USER }}
       DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
       DEPLOY_SSH_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY != '' && secrets.PROD_DEPLOY_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+
+  deploy-pages:
+    name: Deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: "22"
+      CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Validate Cloudflare secrets
+        run: |
+          test -n "$CLOUDFLARE_PROJECT_NAME" || (echo "Missing secret: CLOUDFLARE_PROJECT_NAME" && exit 1)
+          test -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" || (echo "Missing secret: CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" || (echo "Missing secret: CLOUDFLARE_ACCOUNT_ID" && exit 1)
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Build dist
+        run: pnpm run build
+
+      - name: Verify build artifacts
+        run: |
+          test -f dist/index.html || (echo "dist/index.html missing" && exit 1)
+          test -s dist/index.html || (echo "dist/index.html is empty" && exit 1)
+
+      - name: Prepare SPA fallback
+        run: |
+          cp dist/index.html dist/404.html
+          echo "/* /index.html 200" > dist/_redirects
+
+      - name: Deploy dist to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ env.CLOUDFLARE_PROJECT_NAME }} --branch=main
