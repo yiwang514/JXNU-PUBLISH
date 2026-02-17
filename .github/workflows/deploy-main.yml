@@ -105,7 +105,9 @@ jobs:
       - name: Prepare SPA fallback
         run: |
           cp dist/index.html dist/404.html
-          echo "/* /index.html 200" > dist/_redirects
+          if [ ! -f dist/_redirects ]; then
+            echo "/* /index.html 200" > dist/_redirects
+          fi
 
       - name: Deploy dist to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
