@@ -10,6 +10,7 @@
     "build:content": "node scripts/compile-content.mjs",
     "build:images": "node scripts/optimize-images.mjs",
     "build:rss": "node scripts/generate-rss.mjs",
+    "upload:r2:large-attachments": "node scripts/upload-large-attachments-r2.mjs",
     "validate:content": "node scripts/compile-content.mjs --validate-only",
     "prebuild": "pnpm run build:content && pnpm run build:images && pnpm run build:rss",
     "build": "vite build",
@@ -17,6 +18,8 @@
     "vercel-build": "vite build"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.896.0",
+    "@aws-sdk/lib-storage": "^3.896.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-scroll-area": "^1.2.10",

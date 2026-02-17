@@ -29,6 +29,15 @@ const PUBLIC_COVERS_DIR = path.join(PUBLIC_DIR, 'covers');
 const PUBLIC_ATTACHMENTS_DIR = path.join(PUBLIC_DIR, 'attachments');
 const CONFIG_PATH = path.join(ROOT, 'config', 'subscriptions.yaml');
 
+const normalizePublicBaseUrl = (value) => String(value || '').trim().replace(/\/+$/, '');
+const R2_PUBLIC_BASE_URL = normalizePublicBaseUrl(process.env.R2_PUBLIC_BASE_URL);
+const ATTACHMENT_R2_THRESHOLD_MB = Number.parseFloat(process.env.ATTACHMENT_R2_THRESHOLD_MB || '20');
+const ATTACHMENT_R2_THRESHOLD_BYTES = Number.isFinite(ATTACHMENT_R2_THRESHOLD_MB) && ATTACHMENT_R2_THRESHOLD_MB > 0
+  ? Math.floor(ATTACHMENT_R2_THRESHOLD_MB * 1024 * 1024)
+  : 20 * 1024 * 1024;
+const attachmentUrlResolveCache = new Map();
+const missingAttachmentWarned = new Set();
+
 const fail = (message, filePath) => {
   const suffix = filePath ? `\nFile: ${path.relative(ROOT, filePath)}` : '';
   throw new Error(`${message}${suffix}`);
@@ -81,6 +90,87 @@ const normalizeAttachmentUrl = (value, filePath) => {
   if (clean.startsWith('/')) return clean;
 
   return `/attachments/${clean.replace(/^\.?\/+/, '')}`;
+};
+
+const safeDecodeUriComponent = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const toAttachmentRelativePath = (url) => {
+  const clean = String(url || '').split('#')[0].split('?')[0].trim();
+  if (!clean.startsWith('/attachments/')) return '';
+  const rawRelative = clean.slice('/attachments/'.length);
+  const segments = rawRelative
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => safeDecodeUriComponent(segment));
+  return segments.join('/');
+};
+
+const toAttachmentAbsolutePath = (url) => {
+  const rel = toAttachmentRelativePath(url);
+  if (!rel) return '';
+  return path.join(CONTENT_ATTACHMENTS_DIR, ...rel.split('/'));
+};
+
+const toR2PublicUrl = (url) => {
+  const rel = toAttachmentRelativePath(url);
+  if (!rel || !R2_PUBLIC_BASE_URL) return url;
+  const encodedRel = rel
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return `${R2_PUBLIC_BASE_URL}/${encodedRel}`;
+};
+
+const resolveAttachmentUrlForOutput = async (url, filePath) => {
+  const normalizedUrl = normalizeAttachmentUrl(url, filePath);
+  const cacheKey = `${filePath}::${normalizedUrl}`;
+  if (attachmentUrlResolveCache.has(cacheKey)) {
+    return attachmentUrlResolveCache.get(cacheKey);
+  }
+
+  if (!R2_PUBLIC_BASE_URL || !normalizedUrl.startsWith('/attachments/')) {
+    attachmentUrlResolveCache.set(cacheKey, normalizedUrl);
+    return normalizedUrl;
+  }
+
+  const absPath = toAttachmentAbsolutePath(normalizedUrl);
+  if (!absPath) {
+    attachmentUrlResolveCache.set(cacheKey, normalizedUrl);
+    return normalizedUrl;
+  }
+
+  try {
+    const stat = await fs.stat(absPath);
+    if (stat.size > ATTACHMENT_R2_THRESHOLD_BYTES) {
+      const externalUrl = toR2PublicUrl(normalizedUrl);
+      attachmentUrlResolveCache.set(cacheKey, externalUrl);
+      return externalUrl;
+    }
+  } catch {
+    const warnKey = path.relative(ROOT, absPath);
+    if (!missingAttachmentWarned.has(warnKey)) {
+      missingAttachmentWarned.add(warnKey);
+      console.warn(`[attachments] Missing local attachment: ${warnKey}`);
+    }
+  }
+
+  attachmentUrlResolveCache.set(cacheKey, normalizedUrl);
+  return normalizedUrl;
+};
+
+const rewriteAttachmentsForOutput = async (attachments, filePath) => {
+  const rewritten = await Promise.all((attachments || []).map(async (item) => ({
+    ...item,
+    url: await resolveAttachmentUrlForOutput(item.url, filePath),
+  })));
+  return rewritten;
 };
 
 const normalizeAttachments = (attachments, filePath) => {
@@ -367,6 +457,8 @@ const loadCards = async ({ schoolMap, subscriptionMap }) => {
 
     const frontmatterAttachments = normalizeAttachments(parsed.data.attachments, filePath);
     const inlineAttachments = extractInlineAttachments(markdown);
+    const mergedAttachments = mergeAttachments(frontmatterAttachments, inlineAttachments);
+    const outputAttachments = await rewriteAttachmentsForOutput(mergedAttachments, filePath);
 
     const schoolName = String(school?.name || schoolSlug);
     const schoolShortName = String(school?.shortName || schoolName);
@@ -394,7 +486,7 @@ const loadCards = async ({ schoolMap, subscriptionMap }) => {
         channel: sourceChannel || fallbackChannel,
         sender,
       },
-      attachments: mergeAttachments(frontmatterAttachments, inlineAttachments),
+      attachments: outputAttachments,
       pubDate: publishedIso,
       author: sender || schoolName,
       feedTitle: schoolName,
@@ -534,23 +626,45 @@ const writeOutputs = async (compiled) => {
 };
 
 const syncStaticAssets = async () => {
-  const assetPairs = [
-    [CARD_COVERS_DIR, PUBLIC_COVERS_DIR],
-    [CONTENT_IMG_DIR, PUBLIC_IMG_DIR],
-    [CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR],
-  ];
-
   await Promise.all([
     fs.mkdir(PUBLIC_COVERS_DIR, { recursive: true }),
     fs.mkdir(PUBLIC_IMG_DIR, { recursive: true }),
     fs.mkdir(PUBLIC_ATTACHMENTS_DIR, { recursive: true }),
   ]);
 
-  await Promise.all(assetPairs.map(([src, dst]) =>
-    fs.cp(src, dst, { recursive: true, force: true }).catch((err) => {
-      console.warn(`[sync] Failed to copy ${path.relative(ROOT, src)}: ${err.message}`);
-    })
-  ));
+  await Promise.all([
+    fs.cp(CARD_COVERS_DIR, PUBLIC_COVERS_DIR, { recursive: true, force: true }).catch((err) => {
+      console.warn(`[sync] Failed to copy ${path.relative(ROOT, CARD_COVERS_DIR)}: ${err.message}`);
+    }),
+    fs.cp(CONTENT_IMG_DIR, PUBLIC_IMG_DIR, { recursive: true, force: true }).catch((err) => {
+      console.warn(`[sync] Failed to copy ${path.relative(ROOT, CONTENT_IMG_DIR)}: ${err.message}`);
+    }),
+  ]);
+
+  if (R2_PUBLIC_BASE_URL) {
+    await fs.rm(PUBLIC_ATTACHMENTS_DIR, { recursive: true, force: true });
+    await fs.mkdir(PUBLIC_ATTACHMENTS_DIR, { recursive: true });
+    await fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, {
+      recursive: true,
+      force: true,
+      filter: async (src) => {
+        try {
+          const stat = await fs.stat(src);
+          if (stat.isDirectory()) return true;
+          if (!stat.isFile()) return false;
+          return stat.size <= ATTACHMENT_R2_THRESHOLD_BYTES;
+        } catch {
+          return false;
+        }
+      },
+    }).catch((err) => {
+      console.warn(`[sync] Failed to copy filtered attachments: ${err.message}`);
+    });
+  } else {
+    await fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, { recursive: true, force: true }).catch((err) => {
+      console.warn(`[sync] Failed to copy ${path.relative(ROOT, CONTENT_ATTACHMENTS_DIR)}: ${err.message}`);
+    });
+  }
 
   const iconSource = path.join(CONTENT_IMG_DIR, 'icon.ico');
   const iconTarget = path.join(PUBLIC_DIR, 'icon.ico');

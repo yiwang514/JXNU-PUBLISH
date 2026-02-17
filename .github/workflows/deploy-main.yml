@@ -45,6 +45,12 @@ jobs:
     env:
       NODE_VERSION: "22"
       CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME }}
+      ATTACHMENT_R2_THRESHOLD_MB: ${{ vars.ATTACHMENT_R2_THRESHOLD_MB != '' && vars.ATTACHMENT_R2_THRESHOLD_MB || '20' }}
+      R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_S3_ENDPOINT: ${{ secrets.R2_S3_ENDPOINT }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Checkout
@@ -67,13 +73,28 @@ jobs:
           test -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" || (echo "Missing secret: CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" || (echo "Missing secret: CLOUDFLARE_ACCOUNT_ID" && exit 1)
 
+      - name: Restore previous content snapshot from Pages
+        run: |
+          PAGES_URL="${{ secrets.CLOUDFLARE_PAGES_URL }}"
+          if [ -z "$PAGES_URL" ]; then
+            PAGES_URL="https://${CLOUDFLARE_PROJECT_NAME}.pages.dev"
+          fi
+          mkdir -p public/generated
+          curl -fsSL "$PAGES_URL/generated/content-data.json" -o public/generated/content-data.json || echo "::warning::No previous content snapshot found on Cloudflare Pages, building from scratch"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Upload oversized attachments to R2
+        run: pnpm run upload:r2:large-attachments
 
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Build dist
+        env:
+          ATTACHMENT_R2_THRESHOLD_MB: ${{ env.ATTACHMENT_R2_THRESHOLD_MB }}
+          R2_PUBLIC_BASE_URL: ${{ env.R2_PUBLIC_BASE_URL }}
         run: pnpm run build
 
       - name: Verify build artifacts
