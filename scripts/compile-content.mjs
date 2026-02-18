@@ -556,6 +556,10 @@ const compile = ({ notices, conclusions, schools, subscriptions, schoolMap }) =>
     tags: notice.tags,
     published: notice.pubDate,
     contentPlainText: markdownToPlainText(`${notice.title}\n${notice._contentMarkdown}`),
+    attachmentText: (notice.attachments || [])
+      .map((item) => `${String(item.name || '')} ${String(item.type || '')}`.trim())
+      .filter(Boolean)
+      .join(' '),
   }));
 
   notices.sort((a, b) => {

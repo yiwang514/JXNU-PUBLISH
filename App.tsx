@@ -144,6 +144,7 @@ const AppShell: React.FC<{
     filteredArticles, paginatedArticles,
     tagStats, totalPages, visiblePageTokens,
     articleCountByDate,
+    searchHitByArticleId,
   } = useArticleFilters(selectedFeed, searchData, isAllSchoolsView);
 
   const {
@@ -254,6 +255,7 @@ const AppShell: React.FC<{
               onSchoolSummaryJump={handleSchoolSummaryJump}
               mobileCardLayout={mobileCardLayout}
               onMobileCardLayoutChange={setMobileCardLayout}
+              searchHitByArticleId={searchHitByArticleId}
             />
           )}
         </div>

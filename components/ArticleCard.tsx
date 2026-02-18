@@ -26,6 +26,7 @@ interface ArticleCardProps {
   onSchoolTagClick?: (schoolSlug?: string) => void;
   isAllSchoolsView?: boolean;
   variant?: 'default' | 'compactNoCover';
+  searchHitLocation?: 'content' | 'attachment' | 'content+attachment' | null;
 }
 
 export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
@@ -43,6 +44,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
   onSchoolTagClick,
   isAllSchoolsView = false,
   variant = 'default',
+  searchHitLocation = null,
 }) => {
   const [imgError, setImgError] = useState(false);
   const isCompactNoCover = variant === 'compactNoCover';
@@ -115,6 +117,12 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
   }, [article.aiCategory]);
 
   const isCategoryActive = activeCategoryFilters.includes(primaryCategory);
+  const searchHitLabel = React.useMemo(() => {
+    if (searchQuery.trim().length === 0 || !searchHitLocation) return '';
+    if (searchHitLocation === 'content+attachment') return '命中正文和附件';
+    if (searchHitLocation === 'content') return '命中正文';
+    return '命中附件';
+  }, [searchHitLocation, searchQuery]);
 
       const hasTimeWindow = Boolean(article.startAt && article.endAt);
 
@@ -300,6 +308,9 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
             )}
             dangerouslySetInnerHTML={{ __html: titleHtml }}
           />
+          {searchHitLabel && (
+            <p className="text-[10px] font-semibold text-primary/85">{searchHitLabel}</p>
+          )}
         </CardHeader>
         
         {!isCompactNoCover && (

@@ -106,4 +106,5 @@ export type SearchItem = {
   title: string;
   description: string;
   contentPlainText: string;
+  attachmentText?: string;
 };

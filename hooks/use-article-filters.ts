@@ -6,6 +6,7 @@ import { sortArticles } from '../lib/sort-articles';
 import { useNow } from './use-now';
 
 const ARTICLES_PER_PAGE = 12;
+type SearchHitLocation = 'content' | 'attachment' | 'content+attachment';
 
 const getVisiblePageTokens = (currentPage: number, totalPages: number): (number | string)[] => {
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -115,15 +116,43 @@ export function useFilteredArticles(
 
   const nowTs = useNow(hideExpired || timedOnly, 30_000);
 
-  const searchMatches = React.useMemo(() => {
+  const { searchMatches, searchHitByArticleId } = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return null;
-    const set = new Set<string>();
-    for (const row of searchData) {
-      const source = `${row.title} ${row.description} ${row.contentPlainText}`.toLowerCase();
-      if (source.includes(query)) set.add(row.id);
+    if (!query) {
+      return {
+        searchMatches: null as Set<string> | null,
+        searchHitByArticleId: new Map<string, SearchHitLocation>(),
+      };
     }
-    return set;
+
+    const set = new Set<string>();
+    const hitMap = new Map<string, SearchHitLocation>();
+    for (const row of searchData) {
+      const titleText = String(row.title || '').toLowerCase();
+      const descriptionText = String(row.description || '').toLowerCase();
+      const contentText = String(row.contentPlainText || '').toLowerCase();
+      const attachmentText = String(row.attachmentText || '').toLowerCase();
+
+      const inTitleOrDescription = titleText.includes(query) || descriptionText.includes(query);
+      const inContent = contentText.includes(query);
+      const inAttachment = attachmentText.includes(query);
+
+      if (!inTitleOrDescription && !inContent && !inAttachment) continue;
+
+      set.add(row.id);
+      if (inContent && inAttachment) {
+        hitMap.set(row.id, 'content+attachment');
+      } else if (inContent) {
+        hitMap.set(row.id, 'content');
+      } else if (inAttachment) {
+        hitMap.set(row.id, 'attachment');
+      }
+    }
+
+    return {
+      searchMatches: set,
+      searchHitByArticleId: hitMap,
+    };
   }, [searchData, searchQuery]);
 
   const baseArticles = React.useMemo(() => {
@@ -206,6 +235,7 @@ export function useFilteredArticles(
     totalPages,
     visiblePageTokens,
     articleCountByDate,
+    searchHitByArticleId,
   };
 }
 

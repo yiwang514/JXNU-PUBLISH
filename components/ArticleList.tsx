@@ -49,6 +49,7 @@ interface ArticleListProps {
   onSchoolSummaryJump?: (schoolSlug?: string) => void;
   mobileCardLayout: 'list' | 'waterfall';
   onMobileCardLayoutChange: (mode: 'list' | 'waterfall') => void;
+  searchHitByArticleId: Map<string, 'content' | 'attachment' | 'content+attachment'>;
 }
 
 const ArticleListComponent: React.FC<ArticleListProps> = ({
@@ -82,6 +83,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   onSchoolSummaryJump,
   mobileCardLayout,
   onMobileCardLayoutChange,
+  searchHitByArticleId,
 }) => {
   const [isPulling, setIsPulling] = React.useState(false);
   const [isPullReady, setIsPullReady] = React.useState(false);
@@ -449,11 +451,12 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                             searchQuery={searchQuery}
                             showSchoolTag={isAllSchoolsView}
                             onSchoolTagClick={onSchoolSummaryJump}
-                            isAllSchoolsView={isAllSchoolsView}
-                            variant="compactNoCover"
-                          />
-                        </div>
-                      ))}
+                          isAllSchoolsView={isAllSchoolsView}
+                          variant="compactNoCover"
+                          searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                        />
+                      </div>
+                    ))}
                     </div>
                     <div className="hidden md:grid grid-flow-row md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
                       {paginatedArticlesWithCategory.map((article, index) => (
@@ -472,6 +475,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                           showSchoolTag={isAllSchoolsView}
                           onSchoolTagClick={onSchoolSummaryJump}
                           isAllSchoolsView={isAllSchoolsView}
+                          searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
                         />
                       ))}
                     </div>
@@ -494,6 +498,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                         showSchoolTag={isAllSchoolsView}
                         onSchoolTagClick={onSchoolSummaryJump}
                         isAllSchoolsView={isAllSchoolsView}
+                        searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
                       />
                     ))}
                   </div>
