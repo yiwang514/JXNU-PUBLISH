@@ -26,19 +26,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Deploy to server (existing)
-    uses: ./.github/workflows/deploy-reusable.yml
-    with:
-      branch: main
-    secrets:
-      SITE_URL: ${{ secrets.PROD_SITE_URL != '' && secrets.PROD_SITE_URL || secrets.SITE_URL }}
-      DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST != '' && secrets.PROD_DEPLOY_HOST || secrets.DEPLOY_HOST }}
-      DEPLOY_PORT: ${{ secrets.PROD_DEPLOY_PORT != '' && secrets.PROD_DEPLOY_PORT || secrets.DEPLOY_PORT }}
-      DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER != '' && secrets.PROD_DEPLOY_USER || secrets.DEPLOY_USER }}
-      DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
-      DEPLOY_SSH_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY != '' && secrets.PROD_DEPLOY_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
-
   deploy-pages:
     name: Deploy to Cloudflare Pages
     runs-on: ubuntu-latest
