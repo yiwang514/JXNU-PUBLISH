@@ -45,6 +45,8 @@ data/
 .turbo
 
 # Tooling
+.gemini
+.claude
 .opencode/
 .sisyphus/
 .claude/

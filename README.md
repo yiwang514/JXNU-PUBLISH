@@ -3,9 +3,9 @@
 
 JXNU PUBLISH 是一个面向江西师范大学多学院的静态通知聚合站。
 
-将项目克隆到服务器后，它可以通过 astrbot 桥接 QQ群 消息源，由部署在服务器的 Agent（如OpenClaw） 自动解析、生成结构化 Markdown 卡片，再经静态编译生成前端数据和 RSS。
+将项目克隆到服务器后，它可以通过 astrbot 桥接 QQ群 消息源，由部署在服务器或本地的 Agent（如OpenClaw） 自动解析、生成结构化 Markdown 卡片，再经静态编译生成前端数据和 RSS。
 
-当然，在熟悉卡片frontmatter的情况，也可完全不依赖任何AI进行人工手动维护（不推荐）
+当然，在熟悉卡片frontmatter的情况，也可完全不依赖任何LLM进行人工手动维护（不推荐）
 
 ## 项目目标
 
@@ -70,7 +70,7 @@ CI/CD 工作流：
 ├── components/           # React 前端组件
 ├── services/             # 前端服务层
 ├── hooks/                # React hooks
-├── public/generated/     # 编译产物（content-data.json）
+├── generated/            # 编译产物（content-data.json 等，构建时同步到 public/）
 └── BOT_RULES.md          # Bot 行为规则
 ```
 
@@ -89,6 +89,8 @@ Bot 采用 archive 增量处理模式，利用 Skills 完成以下工作：
 
 详细规则见 `BOT_RULES.md`。
 
+> **提示**：项目根目录提供了 `skills_example.7z`，包含 Bot 所需的全套 Skills。部署 Bot（如 OpenClaw）时，建议解压并放置到 `*/skills/` 目录以获得完整的自动化处理能力。
+
 ## 本地开发
 
 ```bash
@@ -96,16 +98,16 @@ pnpm install
 pnpm run dev
 ```
 
-默认地址：`http://localhost:5173`
+默认地址：`http://localhost:3000`
 
 要求 Node.js >= 22。
 
 ## 构建命令
 
 ```bash
-pnpm run build:content    # 生成 public/generated/content-data.json
+pnpm run build:content    # 生成 generated/content-data.json
 pnpm run build:images     # 生成封面 webp 变体（增量）
-pnpm run build:rss        # 生成 public/rss.xml 与 public/rss/*.xml
+pnpm run build:rss        # 生成 public/rss.xml 与 public/rss/<slug>.xml
 pnpm run validate:content # 仅校验内容，不写入
 pnpm run build            # 完整构建（自动先执行 prebuild）
 pnpm run preview          # 预览构建产物
@@ -179,12 +181,14 @@ attachments: []
 
 ## 部署与环境变量
 
-核心 secrets（测试环境）：
+Cloudflare Pages 统一部署（test/main 分支）核心 secrets：
 
-- `SITE_URL`
-- `DEPLOY_HOST` / `DEPLOY_PORT` / `DEPLOY_USER` / `DEPLOY_PATH` / `DEPLOY_SSH_KEY`
-
-生产环境使用 `PROD_*` 对应变量。
+- `CLOUDFLARE_PROJECT_NAME`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_PAGES_TEST_URL`（test 分支对应预览域名）
+- `CLOUDFLARE_PAGES_URL`（main 分支对应生产域名）
+- `R2_PUBLIC_BASE_URL` / `R2_BUCKET` / `R2_S3_ENDPOINT` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`（启用大附件上传时）
 
 ## RSS 地址
 

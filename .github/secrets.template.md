@@ -4,48 +4,35 @@
 
 - `Settings` -> `Secrets and variables` -> `Actions` -> `New repository secret`
 
-## Required
+## Required (Cloudflare Pages)
 
 | Name | Value format | Example |
 | --- | --- | --- |
-| `SITE_URL` | 站点完整 HTTPS 地址，不带末尾 `/` | `https://news.example.com` |
-| `DEPLOY_HOST` | 服务器 IP 或域名 | `123.123.123.123` |
-| `DEPLOY_PORT` | SSH 端口数字字符串（留空默认 22） | `22` |
-| `DEPLOY_USER` | SSH 登录用户 | `deploy` |
-| `DEPLOY_PATH` | 服务器静态目录绝对路径（必须是站点根目录本身，不是其父目录） | `/var/www/jxnu-publish/index` |
-| `DEPLOY_SSH_KEY` | OpenSSH 私钥全文，多行原样粘贴 | 见下方示例 |
+| `CLOUDFLARE_PROJECT_NAME` | Cloudflare Pages 项目名（不是 URL） | `jxnupublish-9by` |
+| `CLOUDFLARE_API_TOKEN` | 具有 Pages Deploy 权限的 API Token | `***` |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID | `***` |
+| `CLOUDFLARE_PAGES_TEST_URL` | test 分支预览环境完整 HTTPS URL，不带末尾 `/` | `https://test.jxnupublish-9by.pages.dev` |
+| `CLOUDFLARE_PAGES_URL` | main 分支生产环境完整 HTTPS URL，不带末尾 `/` | `https://jxnupublish-9by.pages.dev` |
 
-## `DEPLOY_SSH_KEY` format example
+## Required (R2 attachments)
 
-```text
------BEGIN OPENSSH PRIVATE KEY-----
-...
-...
------END OPENSSH PRIVATE KEY-----
-```
+| Name | Value format | Example |
+| --- | --- | --- |
+| `R2_PUBLIC_BASE_URL` | R2 对外访问基础 URL，不带末尾 `/` | `https://pub-r2.example.com` |
+| `R2_BUCKET` | R2 Bucket 名称 | `jxnu-publish` |
+| `R2_S3_ENDPOINT` | S3 兼容 endpoint（含 account id） | `https://<accountid>.r2.cloudflarestorage.com` |
+| `R2_ACCESS_KEY_ID` | R2 Access Key ID | `***` |
+| `R2_SECRET_ACCESS_KEY` | R2 Secret Access Key | `***` |
 
-## Optional (for later notifications)
+## Optional
 
 | Name | Value format |
 | --- | --- |
 | `TG_BOT_TOKEN` | Telegram Bot Token |
 | `TG_CHAT_ID` | Telegram Chat ID |
 
-## Main branch deploy (required for `.github/workflows/deploy-main.yml`)
-
-| Name | Value format | Example |
-| --- | --- | --- |
-| `PROD_SITE_URL` | main 环境站点完整 HTTPS 地址，不带末尾 `/` | `https://www.example.com` |
-| `PROD_DEPLOY_HOST` | main 环境服务器 IP 或域名 | `123.123.123.123` |
-| `PROD_DEPLOY_PORT` | main 环境 SSH 端口数字字符串（留空默认 22） | `22` |
-| `PROD_DEPLOY_USER` | main 环境 SSH 登录用户 | `azureuser` |
-| `PROD_DEPLOY_PATH` | main 环境静态目录绝对路径 | `/opt/1panel/www/sites/www.example.com/index` |
-| `PROD_DEPLOY_SSH_KEY` | main 环境 OpenSSH 私钥全文，多行原样粘贴 | 同上方私钥格式 |
-
 ## Notes
 
 - Secret 的值不要额外加引号。
-- `DEPLOY_SSH_KEY` 必须是私钥，不是公钥（`.pub`）。
-- 请先确保服务器上目标目录已存在，且 `DEPLOY_USER` 对目录有写权限。
-- 若目录下有 `ssl/`、`log/` 等非静态文件，说明你可能把 `DEPLOY_PATH` 填成了父目录，请改成真正的网站静态目录。
-- `PROD_*` 与 `DEPLOY_*` 建议使用不同目录，避免 test 发布覆盖 main 站点。
+- `CLOUDFLARE_PROJECT_NAME` 仅用于 `wrangler pages deploy --project-name`，不用于拼接 URL。
+- `CLOUDFLARE_PAGES_TEST_URL` 与 `CLOUDFLARE_PAGES_URL` 必须填写真实可访问域名，工作流不会自动回退推导。
