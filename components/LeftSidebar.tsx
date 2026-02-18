@@ -356,7 +356,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const [openFolderPath, setOpenFolderPath] = React.useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = React.useState<Set<string>>(new Set());
   const [darkMode, setDarkMode] = React.useState<boolean>(() => {
-    return localStorage.getItem('theme') === 'dark';
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') return true;
+    if (savedTheme === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const hasSyncedThemeRef = React.useRef(false);
 

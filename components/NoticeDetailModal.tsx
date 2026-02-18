@@ -160,7 +160,12 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
     () => (article?.content ? DOMPurify.sanitize(article.content) : ''),
     [article?.content]
   );
-  const sourceChannelText = String(article?.source?.channel || article?.feedTitle || '未知群号').trim() || '未知群号';
+  const schoolShortNameText = String(article?.schoolShortName || '').trim() || '未知学院';
+  const withSchoolPrefix = React.useCallback((channel: string) => {
+    return `[${schoolShortNameText}]${channel}`;
+  }, [schoolShortNameText]);
+  const sourceChannelTextRaw = String(article?.source?.channel || article?.feedTitle || '未知群号').trim() || '未知群号';
+  const sourceChannelText = withSchoolPrefix(sourceChannelTextRaw);
   const sourceSenderText = String(article?.source?.sender || article?.author || '未知发布人').trim() || '未知发布人';
 
   const navButtons = (
@@ -240,7 +245,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                     {article.author || '未知发布人'}
                   </p>
                   <p className="truncate text-[10px] md:text-xs text-muted-foreground">
-                    {article.source?.channel || article.feedTitle || '通知来源'}
+                    {withSchoolPrefix(String(article.source?.channel || article.feedTitle || '通知来源'))}
                   </p>
                 </div>
               </div>
@@ -346,7 +351,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                   <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
                 </article>
 
-                <p className="mt-3 md:mt-4 text-xs md:text-sm italic text-muted-foreground">{`————转发信息来源：${sourceChannelText}、发送者：${sourceSenderText}`}</p>
+                <p className="mt-3 md:mt-4 text-right text-xs md:text-sm italic text-muted-foreground">{`———来源：${sourceChannelText}、发送者：${sourceSenderText}`}</p>
 
               </div>
             </ScrollArea>

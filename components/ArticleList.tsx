@@ -1,11 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  PanelLeft, 
-  PanelRight, 
-  Filter, 
+import {
+  PanelLeft,
+  PanelRight,
+  Filter,
   Search,
-  RefreshCw, 
   ArrowUp,
   LayoutGrid,
   List
@@ -84,13 +83,17 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   mobileCardLayout,
   onMobileCardLayoutChange,
 }) => {
-  const [pullDistance, setPullDistance] = React.useState(0);
+  const [isPulling, setIsPulling] = React.useState(false);
+  const [isPullReady, setIsPullReady] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
-  const [isFakeRefreshing, setIsFakeRefreshing] = React.useState(false);
+  const [isPullPrevTransition, setIsPullPrevTransition] = React.useState(false);
   const [pageJumpMode, setPageJumpMode] = React.useState<'mobile' | 'desktop' | null>(null);
   const [pageJumpInput, setPageJumpInput] = React.useState('');
   const touchStartRef = React.useRef<number>(0);
   const rafRef = React.useRef<number | null>(null);
+  const pullDistanceRef = React.useRef(0);
+  const pullIndicatorRef = React.useRef<HTMLDivElement | null>(null);
+  const isPullReadyRef = React.useRef(false);
 
   const scrollResetKey = `${currentPage}::${activeFilters.join('|')}::${activeTagFilters.join('|')}::${searchQuery}::${selectedDate?.getTime() ?? ''}`;
   const prevScrollResetKeyRef = React.useRef(scrollResetKey);
@@ -101,22 +104,86 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
     ) as HTMLElement | null;
   }, [articleListRef]);
 
+  const isViewportAtTop = React.useCallback(() => {
+    const viewport = getViewport();
+    if (!viewport) return true;
+    return viewport.scrollTop <= 0;
+  }, [getViewport]);
+
   React.useEffect(() => {
     if (prevScrollResetKeyRef.current === scrollResetKey) return;
-    prevScrollResetKeyRef.current = scrollResetKey;
-    const viewport = getViewport();
-    if (!viewport) return;
-    viewport.scrollTo({ top: 0, behavior: 'smooth' });
+
+    let rafId: number | null = null;
+    let retryTimer: number | null = null;
+    let cancelled = false;
+    let activeViewport: HTMLElement | null = null;
+    let previousOverflowAnchorValue: string | null = null;
+
+    const runSmoothReset = (attempt = 0) => {
+      if (cancelled) return;
+
+      const viewport = getViewport();
+      if (!viewport) {
+        if (attempt < 8) {
+          rafId = requestAnimationFrame(() => runSmoothReset(attempt + 1));
+        }
+        return;
+      }
+
+      prevScrollResetKeyRef.current = scrollResetKey;
+
+      activeViewport = viewport;
+      previousOverflowAnchorValue = viewport.style.overflowAnchor;
+      viewport.style.overflowAnchor = 'none';
+
+      const smoothToTop = (remainingRetries: number) => {
+        if (cancelled) return;
+        viewport.scrollTo({ top: 0, behavior: 'smooth' });
+
+        retryTimer = window.setTimeout(() => {
+          if (cancelled) return;
+          if (viewport.scrollTop > 1 && remainingRetries > 0) {
+            smoothToTop(remainingRetries - 1);
+            return;
+          }
+          viewport.style.overflowAnchor = previousOverflowAnchorValue ?? '';
+        }, 220);
+      };
+
+      rafId = requestAnimationFrame(() => {
+        rafId = requestAnimationFrame(() => smoothToTop(3));
+      });
+    };
+
+    runSmoothReset();
+
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (retryTimer) window.clearTimeout(retryTimer);
+      if (activeViewport) {
+        activeViewport.style.overflowAnchor = previousOverflowAnchorValue ?? '';
+      }
+    };
   }, [scrollResetKey, getViewport]);
 
-  const isRefreshing = isFakeRefreshing;
+  const canPullToPrevPage = currentPage > 1;
 
-  const handleFakeRefresh = React.useCallback(async () => {
-    if (isFakeRefreshing) return;
-    setIsFakeRefreshing(true);
-    await new Promise((resolve) => { window.setTimeout(resolve, 450); });
-    setIsFakeRefreshing(false);
-  }, [isFakeRefreshing]);
+  const updatePullIndicator = React.useCallback((distance: number) => {
+    pullDistanceRef.current = distance;
+    const indicator = pullIndicatorRef.current;
+    if (!indicator) return;
+    indicator.style.height = `${distance}px`;
+    indicator.style.opacity = distance > 0 ? '1' : '0';
+  }, []);
+
+  React.useEffect(() => {
+    if (!isPullPrevTransition) return;
+    const timer = window.setTimeout(() => {
+      setIsPullPrevTransition(false);
+    }, 360);
+    return () => window.clearTimeout(timer);
+  }, [isPullPrevTransition]);
 
   const hasSearchOrFilter = searchQuery.trim().length > 0 || activeFilters.length > 0 || activeTagFilters.length > 0 || Boolean(selectedDate);
 
@@ -142,42 +209,54 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   }, [closePageJump, pageJumpInput, setCurrentPage, totalPages]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (articleListRef.current?.scrollTop === 0) {
+    if (isViewportAtTop()) {
       touchStartRef.current = e.touches[0].clientY;
+      setIsPulling(true);
     } else {
       touchStartRef.current = 0;
+      setIsPulling(false);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartRef.current === 0 || isRefreshing) return;
+    if (touchStartRef.current === 0) return;
     const touchY = e.touches[0].clientY;
     const distance = touchY - touchStartRef.current;
 
-    if (distance > 0 && articleListRef.current?.scrollTop === 0) {
+    if (distance > 0 && isViewportAtTop()) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       
       rafRef.current = requestAnimationFrame(() => {
         const pull = Math.min(distance * 0.4, 100);
-        setPullDistance(pull);
+        updatePullIndicator(pull);
+        const ready = canPullToPrevPage && pull >= 60;
+        if (ready !== isPullReadyRef.current) {
+          isPullReadyRef.current = ready;
+          setIsPullReady(ready);
+        }
       });
 
-      if (distance > 5 && e.cancelable) {
+      if (canPullToPrevPage && distance > 5 && e.cancelable) {
         e.preventDefault();
       }
     } else {
-      if (pullDistance !== 0) setPullDistance(0);
+      if (pullDistanceRef.current !== 0) updatePullIndicator(0);
+      if (isPullReadyRef.current) {
+        isPullReadyRef.current = false;
+        setIsPullReady(false);
+      }
     }
   };
 
   const handleTouchEnd = () => {
-    if (pullDistance >= 60) {
-      handleFakeRefresh().finally(() => {
-        setPullDistance(0);
-      });
-    } else {
-      setPullDistance(0);
+    if (pullDistanceRef.current >= 60 && canPullToPrevPage) {
+      setIsPullPrevTransition(true);
+      setCurrentPage(Math.max(1, currentPage - 1));
     }
+    updatePullIndicator(0);
+    isPullReadyRef.current = false;
+    setIsPullReady(false);
+    setIsPulling(false);
     touchStartRef.current = 0;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
   };
@@ -290,23 +369,21 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
         <div className="p-4 md:p-8">
           {/* Pull-to-refresh indicator */}
           <div
-            className="lg:hidden flex items-center justify-center text-xs text-primary overflow-hidden transition-all duration-300 ease-out"
-            style={{
-              height: isRefreshing ? 40 : pullDistance,
-              opacity: isRefreshing || pullDistance > 0 ? 1 : 0
-            }}
-          >
-            {isRefreshing ? (
-              <div className="flex items-center gap-2 font-bold">
-                <RefreshCw className="animate-spin h-4 w-4" />
-                <span>正在刷新...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 font-bold">
-                <ArrowUp className={cn("w-4 h-4 transition-transform duration-300", pullDistance >= 60 && "rotate-180")} />
-                <span>{pullDistance >= 60 ? '释放刷新' : '下拉刷新'}</span>
-              </div>
+            ref={pullIndicatorRef}
+            className={cn(
+              "lg:hidden flex items-center justify-center text-xs text-primary overflow-hidden",
+              isPulling ? "transition-none" : "transition-[height,opacity] duration-220 ease-out"
             )}
+            style={{ height: 0, opacity: 0 }}
+          >
+            <div className="flex items-center gap-2 font-bold">
+              <ArrowUp className={cn("w-4 h-4 transition-transform duration-150", isPullReady && "rotate-180")} />
+              <span>
+                {canPullToPrevPage
+                  ? (isPullReady ? '释放返回上一页' : '下拉返回上一页')
+                  : '当前已是第一页'}
+              </span>
+            </div>
           </div>
 
           {filteredArticlesCount === 0 ? (
@@ -330,12 +407,58 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
             </div>
           ) : (
             <>
-              {mobileCardLayout === 'waterfall' ? (
-                <>
-                  <div className="mx-auto max-w-7xl columns-2 max-[360px]:columns-1 [column-gap:0.75rem] md:hidden">
-                    {paginatedArticlesWithCategory.map((article) => (
-                      <div key={article.guid} className="mb-3 break-inside-avoid">
+              <AnimatePresence>
+                {isPullPrevTransition && (
+                  <motion.div
+                    key={`prev-page-hint-${currentPage}`}
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    className="mx-auto mb-3 inline-flex rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-black text-primary"
+                  >
+                    已返回上一页
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.div
+                initial={false}
+                animate={isPullPrevTransition
+                  ? { opacity: [0.82, 1], y: [10, 0] }
+                  : { opacity: 1, y: 0 }}
+                transition={isPullPrevTransition
+                  ? { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+                  : { duration: 0.01 }}
+                className="will-change-transform"
+              >
+                {mobileCardLayout === 'waterfall' ? (
+                  <>
+                    <div className="mx-auto max-w-7xl columns-2 max-[360px]:columns-1 [column-gap:0.75rem] md:hidden">
+                      {paginatedArticlesWithCategory.map((article) => (
+                        <div key={article.guid} className="mb-3 break-inside-avoid">
+                          <ArticleCard
+                            article={article}
+                            isSelected={false}
+                            isRead={readArticleIds.has(article.guid)}
+                            onClick={() => handleArticleSelect(article)}
+                            onCategoryClick={onCategorySelect}
+                            onTagClick={onTagSelect}
+                            activeCategoryFilters={activeFilters}
+                            activeTagFilters={activeTagFilters}
+                            searchQuery={searchQuery}
+                            showSchoolTag={isAllSchoolsView}
+                            onSchoolTagClick={onSchoolSummaryJump}
+                            isAllSchoolsView={isAllSchoolsView}
+                            variant="compactNoCover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:grid grid-flow-row md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                      {paginatedArticlesWithCategory.map((article, index) => (
                         <ArticleCard
+                          key={article.guid}
                           article={article}
                           isSelected={false}
                           isRead={readArticleIds.has(article.guid)}
@@ -345,15 +468,16 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                           activeCategoryFilters={activeFilters}
                           activeTagFilters={activeTagFilters}
                           searchQuery={searchQuery}
+                          priorityImage={currentPage === 1 && index < 2}
                           showSchoolTag={isAllSchoolsView}
                           onSchoolTagClick={onSchoolSummaryJump}
                           isAllSchoolsView={isAllSchoolsView}
-                          variant="compactNoCover"
                         />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="hidden md:grid grid-flow-row md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="grid grid-flow-row grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
                     {paginatedArticlesWithCategory.map((article, index) => (
                       <ArticleCard
                         key={article.guid}
@@ -373,29 +497,8 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                       />
                     ))}
                   </div>
-                </>
-              ) : (
-                <div className="grid grid-flow-row grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                  {paginatedArticlesWithCategory.map((article, index) => (
-                    <ArticleCard
-                      key={article.guid}
-                      article={article}
-                      isSelected={false}
-                      isRead={readArticleIds.has(article.guid)}
-                      onClick={() => handleArticleSelect(article)}
-                      onCategoryClick={onCategorySelect}
-                      onTagClick={onTagSelect}
-                      activeCategoryFilters={activeFilters}
-                      activeTagFilters={activeTagFilters}
-                      searchQuery={searchQuery}
-                      priorityImage={currentPage === 1 && index < 2}
-                      showSchoolTag={isAllSchoolsView}
-                      onSchoolTagClick={onSchoolSummaryJump}
-                      isAllSchoolsView={isAllSchoolsView}
-                    />
-                  ))}
-                </div>
-              )}
+                )}
+              </motion.div>
             </>
           )}
 
