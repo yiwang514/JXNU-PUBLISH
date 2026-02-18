@@ -600,7 +600,10 @@ const loadPreviousNoticeCount = async () => {
     const data = JSON.parse(raw);
     const previous = Number(data?.totalNotices ?? data?.notices?.length ?? 0);
     return Number.isFinite(previous) ? previous : 0;
-  } catch {
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      console.warn(`[build:content] Failed to load previous notice count from public/generated/content-data.json: ${error.message}`);
+    }
     return 0;
   }
 };
