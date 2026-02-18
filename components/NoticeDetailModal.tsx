@@ -47,10 +47,23 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
   const [badgeSrc, setBadgeSrc] = React.useState(jxnuLogo);
   const openedAtRef = React.useRef(0);
   const modalBodyRef = React.useRef<HTMLDivElement | null>(null);
+  const [contentReady, setContentReady] = React.useState(false);
+
+  const isTouchDevice = React.useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches,
+    []
+  );
 
   React.useEffect(() => {
-    if (!article) return;
+    if (!article) {
+      setContentReady(false);
+      return;
+    }
     openedAtRef.current = Date.now();
+    const timer = requestAnimationFrame(() => {
+      setContentReady(true);
+    });
+    return () => cancelAnimationFrame(timer);
   }, [article]);
 
   const handleOverlayClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -87,10 +100,23 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
+    // Lock all Radix ScrollArea viewports behind the modal so only the
+    // modal's own ScrollArea remains scrollable.
+    const modalEl = document.querySelector('[data-modal-overlay]');
+    const allViewports = document.querySelectorAll<HTMLElement>('[data-radix-scroll-area-viewport]');
+    const lockedViewports: { el: HTMLElement; prev: string }[] = [];
+    allViewports.forEach((vp) => {
+      if (modalEl?.contains(vp)) return;
+      lockedViewports.push({ el: vp, prev: vp.style.overflow });
+      vp.style.overflow = 'hidden';
+    });
+
     window.addEventListener('keydown', handleKeydown);
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      lockedViewports.forEach(({ el, prev }) => { el.style.overflow = prev; });
       window.removeEventListener('keydown', handleKeydown);
     };
   }, [article, onClose, onPrev, onNext, canPrev, canNext]);
@@ -211,21 +237,37 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
     </div>
   );
 
+  const cardInitial = isTouchDevice
+    ? { opacity: 0, y: 30 }
+    : { opacity: 0, scale: 0.92, y: 20 };
+  const cardAnimate = isTouchDevice
+    ? { opacity: 1, y: 0 }
+    : { opacity: 1, scale: 1, y: 0 };
+  const cardExit = isTouchDevice
+    ? { opacity: 0, y: 20 }
+    : { opacity: 0, scale: 0.96, y: 10 };
+  const cardTransition = isTouchDevice
+    ? { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] as const }
+    : { duration: 0.22, ease: [0.4, 0, 0.2, 1] as const };
+
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {article && (
         <motion.div
+          key={article.guid}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: isTouchDevice ? 0.15 : 0.2 }}
           className="fixed inset-0 z-50 bg-black/60 md:backdrop-blur-sm p-4 md:p-8"
+          data-modal-overlay
           onClick={handleOverlayClick}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 10 }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            initial={cardInitial}
+            animate={cardAnimate}
+            exit={cardExit}
+            transition={cardTransition}
             className="mx-auto h-full max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl border bg-background shadow-2xl flex flex-col"
             onClick={(event) => event.stopPropagation()}
           >
@@ -288,12 +330,14 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
 
                 <h2 className="text-2xl md:text-4xl font-black leading-tight mb-3 md:mb-4 break-words [overflow-wrap:anywhere]">{article.title}</h2>
 
-                <div
-                  className="text-[13px] md:text-base leading-relaxed text-muted-foreground mb-5 md:mb-6 break-words [overflow-wrap:anywhere] [&_a]:text-primary [&_a]:underline [&_strong]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                />
+                {contentReady ? (
+                  <>
+                    <div
+                      className="text-[13px] md:text-base leading-relaxed text-muted-foreground mb-5 md:mb-6 break-words [overflow-wrap:anywhere] [&_a]:text-primary [&_a]:underline [&_strong]:font-semibold"
+                      dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                    />
 
-                {article.attachments && article.attachments.length > 0 && (
+                    {article.attachments && article.attachments.length > 0 && (
                   <section className="mb-5 md:mb-6 rounded-xl border bg-muted/20 p-3 md:p-4 overflow-x-auto">
                     <h3 className="mb-2.5 md:mb-3 text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">附件下载</h3>
                     <div className="space-y-1.5 md:space-y-2">
@@ -352,6 +396,10 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
                 </article>
 
                 <p className="mt-3 md:mt-4 text-right text-xs md:text-sm italic text-muted-foreground">{`———来源：${sourceChannelText}、发送者：${sourceSenderText}`}</p>
+                  </>
+                ) : (
+                  <div className="py-8 text-center text-xs text-muted-foreground">加载中…</div>
+                )}
 
               </div>
             </ScrollArea>

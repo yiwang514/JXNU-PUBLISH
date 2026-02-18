@@ -114,59 +114,12 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
 
   React.useEffect(() => {
     if (prevScrollResetKeyRef.current === scrollResetKey) return;
+    prevScrollResetKeyRef.current = scrollResetKey;
 
-    let rafId: number | null = null;
-    let retryTimer: number | null = null;
-    let cancelled = false;
-    let activeViewport: HTMLElement | null = null;
-    let previousOverflowAnchorValue: string | null = null;
-
-    const runSmoothReset = (attempt = 0) => {
-      if (cancelled) return;
-
-      const viewport = getViewport();
-      if (!viewport) {
-        if (attempt < 8) {
-          rafId = requestAnimationFrame(() => runSmoothReset(attempt + 1));
-        }
-        return;
-      }
-
-      prevScrollResetKeyRef.current = scrollResetKey;
-
-      activeViewport = viewport;
-      previousOverflowAnchorValue = viewport.style.overflowAnchor;
-      viewport.style.overflowAnchor = 'none';
-
-      const smoothToTop = (remainingRetries: number) => {
-        if (cancelled) return;
-        viewport.scrollTo({ top: 0, behavior: 'smooth' });
-
-        retryTimer = window.setTimeout(() => {
-          if (cancelled) return;
-          if (viewport.scrollTop > 1 && remainingRetries > 0) {
-            smoothToTop(remainingRetries - 1);
-            return;
-          }
-          viewport.style.overflowAnchor = previousOverflowAnchorValue ?? '';
-        }, 220);
-      };
-
-      rafId = requestAnimationFrame(() => {
-        rafId = requestAnimationFrame(() => smoothToTop(3));
-      });
-    };
-
-    runSmoothReset();
-
-    return () => {
-      cancelled = true;
-      if (rafId) cancelAnimationFrame(rafId);
-      if (retryTimer) window.clearTimeout(retryTimer);
-      if (activeViewport) {
-        activeViewport.style.overflowAnchor = previousOverflowAnchorValue ?? '';
-      }
-    };
+    const viewport = getViewport();
+    if (viewport) {
+      viewport.scrollTop = 0;
+    }
   }, [scrollResetKey, getViewport]);
 
   const canPullToPrevPage = currentPage > 1;
@@ -425,14 +378,14 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
               </AnimatePresence>
 
               <motion.div
-                initial={false}
-                animate={isPullPrevTransition
-                  ? { opacity: [0.82, 1], y: [10, 0] }
-                  : { opacity: 1, y: 0 }}
+                key={scrollResetKey}
+                initial={isPullPrevTransition
+                  ? { opacity: 0.82, y: 10 }
+                  : { opacity: 0 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={isPullPrevTransition
                   ? { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
-                  : { duration: 0.01 }}
-                className="will-change-transform"
+                  : { duration: 0.25, ease: 'easeOut' }}
               >
                 {mobileCardLayout === 'waterfall' ? (
                   <>
