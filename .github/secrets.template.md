@@ -24,13 +24,6 @@
 | `R2_ACCESS_KEY_ID` | R2 Access Key ID | `***` |
 | `R2_SECRET_ACCESS_KEY` | R2 Secret Access Key | `***` |
 
-## Optional
-
-| Name | Value format |
-| --- | --- |
-| `TG_BOT_TOKEN` | Telegram Bot Token |
-| `TG_CHAT_ID` | Telegram Chat ID |
-
 ## Notes
 
 - Secret 的值不要额外加引号。
