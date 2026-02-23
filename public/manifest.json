@@ -1,13 +1,13 @@
 {
-  "name": "JXNU Publish",
-  "short_name": "JXNU",
+  "name": "JXNU PUBLISH",
+  "short_name": "JXNU PUBLISH",
   "id": "/",
   "description": "江西师范大学通知汇聚平台",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
-  "theme_color": "#dc2626",
+  "theme_color": "#fafafa",
   "background_color": "#fafafa",
   "orientation": "any",
   "icons": [
