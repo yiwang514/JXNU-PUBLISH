@@ -32,36 +32,6 @@ export const InstallPWAButton: React.FC = () => {
                     title: "如何添加到主屏幕",
                     description: "请点击浏览器底部的「分享」图标，然后选择「添加到主屏幕」。",
                 });
-            } else if (diagnostics.isLikelyInAppBrowser) {
-                toast({
-                    title: "当前是内置浏览器",
-                    description: "请先在系统浏览器打开（Chrome/Edge），内置浏览器通常不支持安装提示。",
-                });
-            } else if (!diagnostics.secureContext) {
-                toast({
-                    title: "当前不是安全上下文",
-                    description: "添加到主屏幕要求 HTTPS（或 localhost）。请先用 https 访问。",
-                });
-            } else if (!diagnostics.serviceWorkerSupported) {
-                toast({
-                    title: "浏览器不支持 Service Worker",
-                    description: "该浏览器不满足 PWA 安装前置条件，请换 Chrome/Edge。",
-                });
-            } else if (!diagnostics.manifestLinked || !diagnostics.manifestReachable) {
-                toast({
-                    title: "站点清单读取失败",
-                    description: "manifest.json 未正确加载，已回退到手动安装路径。",
-                });
-            } else if (!diagnostics.serviceWorkerRegistered) {
-                toast({
-                    title: "安装条件还在准备中",
-                    description: "Service Worker 尚未生效，请刷新页面后再试一次。",
-                });
-            } else if (diagnostics.isAndroid && diagnostics.isChromeLike) {
-                toast({
-                    title: "浏览器未发出安装事件",
-                    description: "请先浏览几秒再刷新，然后从菜单选择“安装应用/添加到主屏幕”。",
-                });
             } else {
                 const debugCode = [
                     `SC:${diagnostics.secureContext ? 1 : 0}`,
@@ -71,9 +41,21 @@ export const InstallPWAButton: React.FC = () => {
                     `MR:${diagnostics.manifestReachable ? 1 : 0}`,
                 ].join(' ');
 
+                const reason = diagnostics.isLikelyInAppBrowser
+                    ? '当前是应用内浏览器，请先用系统浏览器打开。'
+                    : !diagnostics.secureContext
+                        ? '当前不是 HTTPS 安全上下文。'
+                        : !diagnostics.serviceWorkerSupported
+                            ? '浏览器不支持 Service Worker。'
+                            : !diagnostics.serviceWorkerRegistered
+                                ? 'Service Worker 还未生效。'
+                                : !diagnostics.manifestLinked || !diagnostics.manifestReachable
+                                    ? 'manifest 暂不可用。'
+                                    : '浏览器未触发自动安装事件。';
+
                 toast({
-                    title: "当前浏览器不支持自动安装",
-                    description: `请改用菜单手动安装。诊断: ${debugCode}`,
+                    title: "请改用菜单安装",
+                    description: `${reason} 安卓请点右上角菜单，选择“安装应用/添加到主屏幕”。诊断: ${debugCode}`,
                 });
             }
         }
