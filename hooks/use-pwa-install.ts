@@ -11,6 +11,13 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 declare global {
+    interface Window {
+        __JXNU_PWA__?: {
+            deferredPrompt: BeforeInstallPromptEvent | null;
+            isInstalled: boolean;
+        };
+    }
+
     interface WindowEventMap {
         beforeinstallprompt: BeforeInstallPromptEvent;
     }
@@ -28,16 +35,23 @@ export function usePWAInstall() {
         const isIOSDevice = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
         setIsIOS(isIOSDevice);
 
+        const pwaState = window.__JXNU_PWA__;
+
         // 检测是否已安装（standalone）
         const isStandalone =
             window.matchMedia('(display-mode: standalone)').matches ||
             (window.navigator as any).standalone === true;
-        setIsInstalled(isStandalone);
+        setIsInstalled(isStandalone || Boolean(pwaState?.isInstalled));
+        setDeferredPrompt(pwaState?.deferredPrompt ?? null);
+        setIsInstallable(Boolean(pwaState?.deferredPrompt));
 
         const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
             // 防止 Chrome 67 以前自动显示横幅
             e.preventDefault();
             // 存储事件以便稍后触发
+            if (window.__JXNU_PWA__) {
+                window.__JXNU_PWA__.deferredPrompt = e;
+            }
             setDeferredPrompt(e);
             // 更新 UI 去显示安装按钮
             setIsInstallable(true);
@@ -45,34 +59,53 @@ export function usePWAInstall() {
 
         const handleAppInstalled = () => {
             // 控制已安装后清空
+            if (window.__JXNU_PWA__) {
+                window.__JXNU_PWA__.isInstalled = true;
+                window.__JXNU_PWA__.deferredPrompt = null;
+            }
             setIsInstallable(false);
             setDeferredPrompt(null);
             setIsInstalled(true);
         };
 
+        const handleInstallableSync = () => {
+            const deferred = window.__JXNU_PWA__?.deferredPrompt ?? null;
+            setDeferredPrompt(deferred);
+            setIsInstallable(Boolean(deferred));
+        };
+
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.addEventListener('appinstalled', handleAppInstalled);
+        window.addEventListener('jxnu:pwa-installable', handleInstallableSync);
+        window.addEventListener('jxnu:pwa-installed', handleAppInstalled);
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             window.removeEventListener('appinstalled', handleAppInstalled);
+            window.removeEventListener('jxnu:pwa-installable', handleInstallableSync);
+            window.removeEventListener('jxnu:pwa-installed', handleAppInstalled);
         };
     }, []);
 
     const install = useCallback(async () => {
-        if (!deferredPrompt) {
+        const promptEvent = deferredPrompt ?? window.__JXNU_PWA__?.deferredPrompt ?? null;
+
+        if (!promptEvent) {
             return false; // 当前环境不支持自动触发 PWA 安装
         }
         // 触发安装提示
-        deferredPrompt.prompt();
+        await promptEvent.prompt();
         // 等待用户选择
-        const { outcome } = await deferredPrompt.userChoice;
+        const { outcome } = await promptEvent.userChoice;
 
         // 我们清空 deferredPrompt 以防它在此生命周期内再次被使用（通常只能弹一次）
+        if (window.__JXNU_PWA__) {
+            window.__JXNU_PWA__.deferredPrompt = null;
+        }
         setDeferredPrompt(null);
+        setIsInstallable(false);
 
         if (outcome === 'accepted') {
-            setIsInstallable(false);
             return true;
         }
 

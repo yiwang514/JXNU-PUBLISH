@@ -91,6 +91,24 @@
       } catch (e) { }
     })();
   </script>
+  <script>
+    (function () {
+      var state = window.__JXNU_PWA__ || { deferredPrompt: null, isInstalled: false };
+      window.__JXNU_PWA__ = state;
+
+      window.addEventListener('beforeinstallprompt', function (event) {
+        event.preventDefault();
+        state.deferredPrompt = event;
+        window.dispatchEvent(new Event('jxnu:pwa-installable'));
+      });
+
+      window.addEventListener('appinstalled', function () {
+        state.isInstalled = true;
+        state.deferredPrompt = null;
+        window.dispatchEvent(new Event('jxnu:pwa-installed'));
+      });
+    })();
+  </script>
 </head>
 
 <body class="antialiased h-[100dvh] overflow-hidden transition-colors duration-300">
