@@ -73,12 +73,10 @@ export function usePWAInstall() {
 
         const refreshDiagnostics = async () => {
             let manifestReachable = false;
-            const manifestUrl = manifestLink?.href || '/manifest.json';
-            if (manifestUrl) {
+            if (manifestLink?.href) {
                 try {
-                    const response = await fetch(manifestUrl, { cache: 'no-store' });
-                    const contentType = response.headers.get('content-type') || '';
-                    manifestReachable = response.ok && (contentType.includes('json') || contentType.includes('manifest'));
+                    const response = await fetch(manifestLink.href, { cache: 'no-store' });
+                    manifestReachable = response.ok;
                 } catch {
                     manifestReachable = false;
                 }
@@ -98,7 +96,7 @@ export function usePWAInstall() {
                 secureContext: window.isSecureContext,
                 serviceWorkerSupported: 'serviceWorker' in navigator,
                 serviceWorkerRegistered,
-                manifestLinked: Boolean(manifestLink?.href || manifestUrl),
+                manifestLinked: Boolean(manifestLink?.href),
                 manifestReachable,
                 isAndroid: isAndroidDevice,
                 isChromeLike,
