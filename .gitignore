@@ -21,6 +21,11 @@ public/*
 !public/robots.txt
 !public/_headers
 !public/_redirects
+!public/manifest.json
+!public/sw.js
+!public/icon-192.png
+!public/icon-512.png
+!public/icon.png
 public/attachments/
 public/covers/
 public/img/
