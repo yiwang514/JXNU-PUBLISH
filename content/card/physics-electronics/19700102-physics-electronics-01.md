@@ -10,7 +10,7 @@ id: 19700102-physics-electronics-01
 category: "其它分类"
 tags: ["联系作者"]
 pinned: true
-cover: "/covers/iwantu.jpg"
+cover: ""
 badge: "/default-placeholder.svg"
 extra_url: ""
 start_at: ''

@@ -194,6 +194,9 @@ export function useFilteredArticles(
   const visiblePageTokens = getVisiblePageTokens(currentPage, totalPages);
   const pageParam = searchParams.get('p');
 
+  // Track whether the latest page change was triggered by browser back/forward
+  const fromPopstateRef = React.useRef(false);
+
   React.useEffect(() => {
     const normalized = Math.min(Math.max(currentPage, 1), totalPages);
     if (normalized !== currentPage) {
@@ -205,13 +208,35 @@ export function useFilteredArticles(
     const normalized = Math.min(Math.max(currentPage, 1), totalPages);
     const targetParam = normalized > 1 ? String(normalized) : null;
     if ((pageParam ?? null) === targetParam) return;
+
+    // Push for user-initiated page navigation;
+    // replace for popstate restoration and page normalization (clamping)
+    const replace = fromPopstateRef.current || normalized !== currentPage;
+    fromPopstateRef.current = false;
+
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (targetParam) next.set('p', targetParam);
       else next.delete('p');
       return next;
-    }, { replace: true });
+    }, { replace });
   }, [currentPage, pageParam, setSearchParams, totalPages]);
+
+  // Sync URL → page state on browser back/forward navigation
+  React.useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const raw = Number(params.get('p'));
+      const p = (Number.isInteger(raw) && raw > 0) ? raw : 1;
+      setCurrentPage((prev) => {
+        if (prev === p) return prev;       // no-op (e.g. modal popstate)
+        fromPopstateRef.current = true;
+        return p;
+      });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [setCurrentPage]);
 
   const paginatedArticles = React.useMemo(() => {
     const start = (currentPage - 1) * ARTICLES_PER_PAGE;

@@ -298,7 +298,7 @@ const main = async () => {
       category: '其它分类',
       tags: ['联系作者'],
       pinned: true,
-      cover: '/covers/iwantu.jpg',
+      cover: '',
       badge: '/default-placeholder.svg',
       extraUrl: '',
       source: {
