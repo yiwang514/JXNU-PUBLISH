@@ -65,7 +65,7 @@
       "destination": "/api/history?action=:action"
     },
     {
-      "source": "/((?!api|assets|_next|img|covers|attachments|generated|rss|robots\.txt|manifest\.json|sw\.js|icon(?:-192|-512)?\.png|icon\.ico).*)",
+      "source": "/((?!api|assets|_next).*)",
       "destination": "/"
     }
   ],
