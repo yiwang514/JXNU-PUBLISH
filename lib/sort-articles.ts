@@ -7,8 +7,14 @@ import { UNKNOWN_SCHOOL } from './constants';
  * In all-schools view, only `schoolSlug === UNKNOWN_SCHOOL` pins are promoted
  * to the top — other schools' pins sort normally so they don't pile up.
  */
-export const sortArticles = (articles: Article[], isAllSchoolsView: boolean): Article[] =>
+export const sortArticles = (
+  articles: Article[],
+  isAllSchoolsView: boolean,
+  sortOrder: 'latest' | 'expiring_soon' | 'popular' = 'latest',
+  nowTs: number = Date.now()
+): Article[] =>
   articles.slice().sort((a, b) => {
+    // 1. Pinned items always go first
     const aPinned = isAllSchoolsView
       ? Boolean(a.pinned && a.schoolSlug === UNKNOWN_SCHOOL)
       : Boolean(a.pinned);
@@ -17,8 +23,31 @@ export const sortArticles = (articles: Article[], isAllSchoolsView: boolean): Ar
       : Boolean(b.pinned);
     if (aPinned !== bPinned) return aPinned ? -1 : 1;
 
+    // 2. Specific Sort Order
+    if (sortOrder === 'expiring_soon') {
+      const aEnd = a.endAt ? new Date(a.endAt).getTime() : 0;
+      const bEnd = b.endAt ? new Date(b.endAt).getTime() : 0;
+
+      const aNotExpired = aEnd > nowTs;
+      const bNotExpired = bEnd > nowTs;
+
+      // Group: Not expired (has endAt and > now) > Expired / No EndAt
+      if (aNotExpired !== bNotExpired) {
+        return aNotExpired ? -1 : 1;
+      }
+
+      // Both not expired -> Sort by end time ascending (closer to expire first)
+      if (aNotExpired && bNotExpired) {
+        if (aEnd !== bEnd) return aEnd - bEnd;
+      }
+
+      // Fallback or both expired / no endAt -> Sort by pubDate descending
+    }
+
+    // Default / Fallback: Newest pubDate
     const diff = new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
     if (diff !== 0) return diff;
 
+    // Tiebreaker
     return (b.guid || '').localeCompare(a.guid || '', 'zh-CN');
   });

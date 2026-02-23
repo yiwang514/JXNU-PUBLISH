@@ -4,6 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="/icon.ico" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="JXNU" />
   <link rel="alternate" type="application/rss+xml" title="JXNU PUBLISH 全站 RSS" href="/rss.xml" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="JXNU PUBLISH 汇聚江西师范大学多学院通知，提供结构化浏览、按学院筛选与 RSS 订阅，帮助你更快获取校内动态。" />
@@ -98,6 +103,13 @@
     </div>
   </div>
   <script type="module" src="/index.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
 </body>
 
 </html>

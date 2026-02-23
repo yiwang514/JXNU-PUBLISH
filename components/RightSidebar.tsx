@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { InstallPWAButton } from './InstallPWAButton';
 
 const toDateKey = (date: Date): string => {
   const year = date.getFullYear();
@@ -214,10 +215,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = React.memo(({
         !isOpen && 'lg:w-0 lg:border-none lg:overflow-hidden'
       )}>
         <div className="p-4 border-b flex items-center justify-between lg:hidden shrink-0">
-          <h3 className="text-sm font-black uppercase tracking-widest">侧边面板</h3>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="关闭右侧栏" title="关闭右侧栏">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="关闭右侧栏" title="关闭右侧栏" className="-ml-2 text-muted-foreground hover:text-foreground">
             <X className="w-5 h-5" />
           </Button>
+          <InstallPWAButton />
         </div>
         <div className="p-4 flex flex-col gap-6 h-full overflow-y-auto">
           <div className="flex flex-col gap-1">

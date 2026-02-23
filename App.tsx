@@ -18,34 +18,34 @@ const NotFoundPage: React.FC<{
   title = '404 页面不存在',
   description = '你访问的链接不存在，可能已被移动或删除。',
 }) => {
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
-  return (
-    <div className="min-h-screen bg-background text-foreground p-6 md:p-10 flex items-center justify-center">
-      <div className="w-full max-w-xl rounded-2xl border bg-card p-6 md:p-8 shadow-sm space-y-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">JXNU Publish</p>
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight">{title}</h1>
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-bold"
-          >
-            返回首页
-          </button>
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="h-9 px-4 rounded-md border text-sm font-bold"
-          >
-            返回上一页
-          </button>
+    return (
+      <div className="min-h-screen bg-background text-foreground p-6 md:p-10 flex items-center justify-center">
+        <div className="w-full max-w-xl rounded-2xl border bg-card p-6 md:p-8 shadow-sm space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">JXNU Publish</p>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight">{title}</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-bold"
+            >
+              返回首页
+            </button>
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="h-9 px-4 rounded-md border text-sm font-bold"
+            >
+              返回上一页
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 const useCompiledData = () => {
   const [contentData, setContentData] = React.useState<CompiledContent | null>(null);
@@ -138,6 +138,7 @@ const AppShell: React.FC<{
     activeTagFilters, setActiveTagFilters,
     timedOnly, setTimedOnly,
     hideExpired, setHideExpired,
+    sortOrder, setSortOrder,
     currentPage, setCurrentPage,
     searchQuery, setSearchQuery,
     resetFilters, updateFilter,
@@ -212,6 +213,8 @@ const AppShell: React.FC<{
             />
           ) : (
             <ArticleList
+              sortOrder={sortOrder}
+              onSortOrderChange={(value) => updateFilter(setSortOrder, value)}
               selectedFeed={selectedFeed}
               isSidebarOpen={isSidebarOpen}
               setIsSidebarOpen={setIsSidebarOpen}
@@ -295,11 +298,10 @@ const AppShell: React.FC<{
         canNext={activeIndex >= 0 && activeIndex < filteredArticles.length - 1}
         shareUrl={
           activeArticle && selectedFeedMeta
-            ? `${window.location.origin}/school/${
-                selectedFeedMeta.id === 'all-schools'
-                  ? (activeArticle.schoolSlug || selectedFeedMeta.routeSlug)
-                  : selectedFeedMeta.routeSlug
-              }#${activeArticle.guid}`
+            ? `${window.location.origin}/school/${selectedFeedMeta.id === 'all-schools'
+              ? (activeArticle.schoolSlug || selectedFeedMeta.routeSlug)
+              : selectedFeedMeta.routeSlug
+            }#${activeArticle.guid}`
             : ''
         }
       />

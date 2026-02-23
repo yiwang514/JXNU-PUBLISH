@@ -26,6 +26,8 @@ export interface ArticleFilterState {
   setTimedOnly: React.Dispatch<React.SetStateAction<boolean>>;
   hideExpired: boolean;
   setHideExpired: React.Dispatch<React.SetStateAction<boolean>>;
+  sortOrder: 'latest' | 'expiring_soon' | 'popular';
+  setSortOrder: React.Dispatch<React.SetStateAction<'latest' | 'expiring_soon' | 'popular'>>;
   currentPage: number;
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
   searchQuery: string;
@@ -42,6 +44,7 @@ export function useArticleFilterState(): ArticleFilterState {
   const [activeTagFilters, setActiveTagFilters] = React.useState<string[]>([]);
   const [timedOnly, setTimedOnly] = React.useState(false);
   const [hideExpired, setHideExpired] = React.useState(false);
+  const [sortOrder, setSortOrder] = React.useState<'latest' | 'expiring_soon' | 'popular'>('latest');
   const [currentPage, setCurrentPage] = React.useState(() => {
     const raw = searchParams.get('p');
     const parsed = Number(raw);
@@ -52,11 +55,12 @@ export function useArticleFilterState(): ArticleFilterState {
 
   const hasActiveFilters = Boolean(
     selectedDate
-      || activeFilters.length > 0
-      || activeTagFilters.length > 0
-      || timedOnly
-      || hideExpired
-      || searchQuery.trim().length > 0
+    || activeFilters.length > 0
+    || activeTagFilters.length > 0
+    || timedOnly
+    || hideExpired
+    || sortOrder !== 'latest'
+    || searchQuery.trim().length > 0
   );
 
   const lastUnfilteredPageRef = React.useRef(currentPage);
@@ -81,6 +85,7 @@ export function useArticleFilterState(): ArticleFilterState {
     setActiveTagFilters([]);
     setTimedOnly(false);
     setHideExpired(false);
+    setSortOrder('latest');
   }, []);
 
   const updateFilter = React.useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T | ((prev: T) => T)) => {
@@ -94,6 +99,7 @@ export function useArticleFilterState(): ArticleFilterState {
     activeTagFilters, setActiveTagFilters,
     timedOnly, setTimedOnly,
     hideExpired, setHideExpired,
+    sortOrder, setSortOrder,
     currentPage, setCurrentPage,
     searchQuery, setSearchQuery,
     resetFilters, updateFilter,
@@ -108,13 +114,13 @@ export function useFilteredArticles(
 ) {
   const {
     selectedDate, activeFilters, activeTagFilters,
-    timedOnly, hideExpired, currentPage, setCurrentPage,
+    timedOnly, hideExpired, sortOrder, currentPage, setCurrentPage,
     searchQuery,
   } = state;
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const nowTs = useNow(hideExpired || timedOnly, 30_000);
+  const nowTs = useNow(hideExpired || timedOnly || sortOrder === 'expiring_soon', 30_000);
 
   const { searchMatches, searchHitByArticleId } = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -187,8 +193,8 @@ export function useFilteredArticles(
   }, [activeFilters, activeTagFilters, hideExpired, nowTs, searchMatches, timedOnly]);
 
   const filteredArticles = React.useMemo(() => {
-    return sortArticles(baseArticles.filter(matchesActiveCriteria), isAllSchoolsView);
-  }, [baseArticles, isAllSchoolsView, matchesActiveCriteria]);
+    return sortArticles(baseArticles.filter(matchesActiveCriteria), isAllSchoolsView, sortOrder, nowTs);
+  }, [baseArticles, isAllSchoolsView, matchesActiveCriteria, sortOrder, nowTs]);
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE));
   const visiblePageTokens = getVisiblePageTokens(currentPage, totalPages);

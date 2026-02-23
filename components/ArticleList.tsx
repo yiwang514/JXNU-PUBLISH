@@ -7,7 +7,9 @@ import {
   Search,
   ArrowUp,
   LayoutGrid,
-  List
+  List,
+  ChevronDown,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +21,8 @@ import { Feed, Article } from '../types';
 import { cn } from "@/lib/utils";
 
 interface ArticleListProps {
+  sortOrder: 'latest' | 'expiring_soon' | 'popular';
+  onSortOrderChange: (value: 'latest' | 'expiring_soon' | 'popular') => void;
   selectedFeed: Feed;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
@@ -53,6 +57,8 @@ interface ArticleListProps {
 }
 
 const ArticleListComponent: React.FC<ArticleListProps> = ({
+  sortOrder,
+  onSortOrderChange,
   selectedFeed,
   isSidebarOpen,
   setIsSidebarOpen,
@@ -89,6 +95,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   const [isPullReady, setIsPullReady] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [isPullPrevTransition, setIsPullPrevTransition] = React.useState(false);
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = React.useState(false);
   const [pageJumpMode, setPageJumpMode] = React.useState<'mobile' | 'desktop' | null>(null);
   const [pageJumpInput, setPageJumpInput] = React.useState('');
   const touchStartRef = React.useRef<number>(0);
@@ -180,7 +187,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
 
     if (distance > 0 && isViewportAtTop()) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      
+
       rafRef.current = requestAnimationFrame(() => {
         const pull = Math.min(distance * 0.4, 100);
         updatePullIndicator(pull);
@@ -314,11 +321,11 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
         </div>
       </header>
 
-        <FilterBar
-          activeFilters={activeFilters}
-          onToggleFilter={handleFilterToggle}
-          onReset={() => handleFilterToggle('__reset__')} // Note: Logic handled in App.tsx
-        />
+      <FilterBar
+        activeFilters={activeFilters}
+        onToggleFilter={handleFilterToggle}
+        onReset={() => handleFilterToggle('__reset__')} // Note: Logic handled in App.tsx
+      />
 
       <ScrollArea ref={articleListRef as any} className="flex-1 bg-muted/10">
         <div className="p-4 md:p-8">
@@ -338,6 +345,94 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                   ? (isPullReady ? '释放返回上一页' : '下拉返回上一页')
                   : '当前已是第一页'}
               </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mb-4 max-w-7xl mx-auto">
+            <div className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse"></span>
+              第 <span className="text-foreground">{currentPage}</span> 页
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsSortDropdownOpen((prev) => !prev)}
+                className={cn(
+                  "flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-bold transition-colors select-none",
+                  isSortDropdownOpen
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-foreground hover:bg-muted"
+                )}
+              >
+                {sortOrder === 'latest' && "最新"}
+                {sortOrder === 'expiring_soon' && "即将失效"}
+                {sortOrder === 'popular' && "最热"}
+                <ChevronDown className={cn(
+                  "w-3.5 h-3.5 transition-transform duration-200",
+                  isSortDropdownOpen && "rotate-180"
+                )} />
+              </button>
+
+              <AnimatePresence>
+                {isSortDropdownOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="fixed inset-0 z-40 bg-black/5 md:bg-transparent"
+                      onClick={() => setIsSortDropdownOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-32 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-lg"
+                    >
+                      <div className="p-1 flex flex-col gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSortOrderChange('latest');
+                            setIsSortDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
+                            sortOrder === 'latest' ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                          )}
+                        >
+                          最新
+                          {sortOrder === 'latest' && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSortOrderChange('expiring_soon');
+                            setIsSortDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
+                            sortOrder === 'expiring_soon' ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                          )}
+                        >
+                          即将失效
+                          {sortOrder === 'expiring_soon' && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          disabled
+                          className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg opacity-40 cursor-not-allowed text-left"
+                        >
+                          最热（待开发）
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -404,12 +499,12 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                             searchQuery={searchQuery}
                             showSchoolTag={isAllSchoolsView}
                             onSchoolTagClick={onSchoolSummaryJump}
-                          isAllSchoolsView={isAllSchoolsView}
-                          variant="compactNoCover"
-                          searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
-                        />
-                      </div>
-                    ))}
+                            isAllSchoolsView={isAllSchoolsView}
+                            variant="compactNoCover"
+                            searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                          />
+                        </div>
+                      ))}
                     </div>
                     <div className="hidden md:grid grid-flow-row md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
                       {paginatedArticlesWithCategory.map((article, index) => (
