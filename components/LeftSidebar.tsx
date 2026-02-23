@@ -374,9 +374,23 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
   React.useEffect(() => {
     const root = document.documentElement;
+    const syncThemeMeta = () => {
+      const themeColor = darkMode ? '#191b1f' : '#fafafa';
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) {
+        themeMeta.setAttribute('content', themeColor);
+      }
+
+      const appleStatusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (appleStatusMeta) {
+        appleStatusMeta.setAttribute('content', darkMode ? 'black-translucent' : 'default');
+      }
+    };
+
     const applyTheme = () => {
       root.classList.toggle('dark', darkMode);
       localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+      syncThemeMeta();
     };
 
     if (!hasSyncedThemeRef.current) {

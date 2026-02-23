@@ -86,8 +86,19 @@
       try {
         var localTheme = localStorage.getItem('theme');
         var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (localTheme === 'dark' || (!localTheme && sysDark)) {
+        var useDark = localTheme === 'dark' || (!localTheme && sysDark);
+        if (useDark) {
           document.documentElement.classList.add('dark');
+        }
+
+        var themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) {
+          themeMeta.setAttribute('content', useDark ? '#191b1f' : '#fafafa');
+        }
+
+        var appleStatusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        if (appleStatusMeta) {
+          appleStatusMeta.setAttribute('content', useDark ? 'black-translucent' : 'default');
         }
       } catch (e) { }
     })();
