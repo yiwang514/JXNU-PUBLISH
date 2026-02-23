@@ -196,6 +196,10 @@ export function useFilteredArticles(
 
   // Track whether the latest page change was triggered by browser back/forward
   const fromPopstateRef = React.useRef(false);
+  // Tracks the page we last pushed/synced for. After a push, any stale
+  // re-render where currentPage === pushedForPageRef is skipped entirely
+  // to prevent react-router's replace from rolling back our history entry.
+  const pushedForPageRef = React.useRef(currentPage);
 
   React.useEffect(() => {
     const normalized = Math.min(Math.max(currentPage, 1), totalPages);
@@ -207,19 +211,28 @@ export function useFilteredArticles(
   React.useEffect(() => {
     const normalized = Math.min(Math.max(currentPage, 1), totalPages);
     const targetParam = normalized > 1 ? String(normalized) : null;
-    if ((pageParam ?? null) === targetParam) return;
 
-    // Push for user-initiated page navigation;
-    // replace for popstate restoration and page normalization (clamping)
-    const replace = fromPopstateRef.current || normalized !== currentPage;
+    // Already synced — update ref and bail
+    if ((pageParam ?? null) === targetParam) {
+      pushedForPageRef.current = currentPage;
+      return;
+    }
+
+    // Already pushed for this page but pageParam hasn't caught up yet.
+    // Skip entirely — calling setSearchParams (even replace) would let
+    // react-router roll back our push via its internal idx tracking.
+    if (currentPage === pushedForPageRef.current) return;
+
+    const shouldPush = !fromPopstateRef.current && normalized === currentPage;
     fromPopstateRef.current = false;
+    pushedForPageRef.current = currentPage;
 
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (targetParam) next.set('p', targetParam);
       else next.delete('p');
       return next;
-    }, { replace });
+    }, { replace: !shouldPush });
   }, [currentPage, pageParam, setSearchParams, totalPages]);
 
   // Sync URL → page state on browser back/forward navigation
