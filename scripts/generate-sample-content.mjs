@@ -293,7 +293,7 @@ const main = async () => {
       id,
       school,
       title: `${school.name} 未接入`,
-      description: 'JXNU PUBLISH希望更多的学院可以接入我们的通知源，**打破学院之间的信息壁垒，促进师大的信息流通效率**，非常希望未接入的学院的班委、老师、可以联系作者，万分感激！\\n邮箱：guiguisocute@qq.com',
+      description: 'JXNU PUBLISH希望更多的学院可以接入我们的通知源，**打破学院之间的信息壁垒，促进师大的信息流通效率**，非常希望未接入的学院的班委、老师、可以联系作者，万分感激！\\n邮箱：guiguisocute@linux.do',
       published: '2026-02-01T09:00:00+08:00',
       category: '其它分类',
       tags: ['联系作者'],

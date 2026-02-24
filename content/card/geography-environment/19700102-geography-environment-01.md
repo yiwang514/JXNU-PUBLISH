@@ -3,7 +3,7 @@ school_slug: "geography-environment"
 title: "OWO 欢迎联系"
 description: >-
   JXNU PUBLISH欢迎其他未接入学院的同学**联系作者**~
-  - 邮箱：guiguisocute@qq.com
+  - 邮箱：guiguisocute@linux.do
   感谢支持~
 published: 1970-01-02T09:00:00+08:00
 id: 19700102-geography-environment-01
