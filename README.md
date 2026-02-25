@@ -35,7 +35,8 @@ flowchart LR
 - **图表**：Recharts
 - **内容生产**：可以使用Skill的各种Agent
 - **消息桥接**：astrbot-QQtoTele
-- **部署**：GitHub Actions + rsync
+- **部署**：GitHub Actions + Cloudflare Pages
+- **浏览计数**：Cloudflare D1 + Pages Functions（IP 去重）
 
 ## 分支与发布策略
 
@@ -66,6 +67,10 @@ CI/CD 工作流：
 │   ├── img/              # 卡片图片
 │   └── attachments/      # 卡片附件
 ├── worklog/*.md          # Bot 工作日志
+├── functions/            # Cloudflare Pages Functions (API)
+│   └── api/
+│       ├── view.ts       # POST /api/view — 记录浏览（IP 去重）
+│       └── views.ts      # GET /api/views — 批量查询浏览计数
 ├── scripts/              # 构建与工具脚本
 ├── components/           # React 前端组件
 ├── services/             # 前端服务层
@@ -189,6 +194,14 @@ Cloudflare Pages 统一部署（test/main 分支）核心 secrets：
 - `CLOUDFLARE_PAGES_TEST_URL`（test 分支对应预览域名）
 - `CLOUDFLARE_PAGES_URL`（main 分支对应生产域名）
 - `R2_PUBLIC_BASE_URL` / `R2_BUCKET` / `R2_S3_ENDPOINT` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`（启用大附件上传时）
+
+### D1 浏览计数
+
+Pages Functions 通过 D1 数据库记录卡片浏览量，需要在 Cloudflare Dashboard 中为 Pages 项目绑定 D1：
+
+- **Binding name**: `DB`
+- **Database**: `jxnu-views`
+- Production 和 Preview 环境均需绑定
 
 ## RSS 地址
 
