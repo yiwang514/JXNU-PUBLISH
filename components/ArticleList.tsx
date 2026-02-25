@@ -54,6 +54,7 @@ interface ArticleListProps {
   mobileCardLayout: 'list' | 'waterfall';
   onMobileCardLayoutChange: (mode: 'list' | 'waterfall') => void;
   searchHitByArticleId: Map<string, 'content' | 'attachment' | 'content+attachment'>;
+  viewCounts?: Record<string, number>;
 }
 
 const ArticleListComponent: React.FC<ArticleListProps> = ({
@@ -90,6 +91,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   mobileCardLayout,
   onMobileCardLayoutChange,
   searchHitByArticleId,
+  viewCounts = {},
 }) => {
   const [isPulling, setIsPulling] = React.useState(false);
   const [isPullReady, setIsPullReady] = React.useState(false);
@@ -423,10 +425,17 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                         </button>
                         <button
                           type="button"
-                          disabled
-                          className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg opacity-40 cursor-not-allowed text-left"
+                          onClick={() => {
+                            onSortOrderChange('popular');
+                            setIsSortDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "flex items-center justify-between w-full px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left",
+                            sortOrder === 'popular' ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                          )}
                         >
-                          最热（待开发）
+                          最热
+                          {sortOrder === 'popular' && <Check className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </motion.div>
@@ -502,6 +511,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                             isAllSchoolsView={isAllSchoolsView}
                             variant="compactNoCover"
                             searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                            viewCount={viewCounts[article.guid]}
                           />
                         </div>
                       ))}
@@ -524,6 +534,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                           onSchoolTagClick={onSchoolSummaryJump}
                           isAllSchoolsView={isAllSchoolsView}
                           searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                          viewCount={viewCounts[article.guid]}
                         />
                       ))}
                     </div>
@@ -547,6 +558,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
                         onSchoolTagClick={onSchoolSummaryJump}
                         isAllSchoolsView={isAllSchoolsView}
                         searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                        viewCount={viewCounts[article.guid]}
                       />
                     ))}
                   </div>

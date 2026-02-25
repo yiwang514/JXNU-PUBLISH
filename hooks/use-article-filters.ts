@@ -110,7 +110,8 @@ export function useFilteredArticles(
   state: ArticleFilterState,
   selectedFeed: Feed | null,
   searchData: SearchItem[],
-  isAllSchoolsView: boolean
+  isAllSchoolsView: boolean,
+  viewCounts?: Record<string, number>
 ) {
   const {
     selectedDate, activeFilters, activeTagFilters,
@@ -193,8 +194,8 @@ export function useFilteredArticles(
   }, [activeFilters, activeTagFilters, hideExpired, nowTs, searchMatches, timedOnly]);
 
   const filteredArticles = React.useMemo(() => {
-    return sortArticles(baseArticles.filter(matchesActiveCriteria), isAllSchoolsView, sortOrder, nowTs);
-  }, [baseArticles, isAllSchoolsView, matchesActiveCriteria, sortOrder, nowTs]);
+    return sortArticles(baseArticles.filter(matchesActiveCriteria), isAllSchoolsView, sortOrder, nowTs, viewCounts);
+  }, [baseArticles, isAllSchoolsView, matchesActiveCriteria, sortOrder, nowTs, viewCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE));
   const visiblePageTokens = getVisiblePageTokens(currentPage, totalPages);
@@ -287,9 +288,10 @@ export function useFilteredArticles(
 export function useArticleFilters(
   selectedFeed: Feed | null,
   searchData: SearchItem[],
-  isAllSchoolsView: boolean
+  isAllSchoolsView: boolean,
+  viewCounts?: Record<string, number>
 ) {
   const filterState = useArticleFilterState();
-  const filterResult = useFilteredArticles(filterState, selectedFeed, searchData, isAllSchoolsView);
+  const filterResult = useFilteredArticles(filterState, selectedFeed, searchData, isAllSchoolsView, viewCounts);
   return { ...filterState, ...filterResult };
 }

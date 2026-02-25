@@ -1,0 +1,7 @@
+name = "jxnu-publish"
+compatibility_date = "2024-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jxnu-views"
+database_id = "22e6a736-9b1b-4bcb-8d10-c23a21a2e81c"

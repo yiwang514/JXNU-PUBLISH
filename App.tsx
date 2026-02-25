@@ -10,6 +10,7 @@ import { useArticleFilters } from './hooks/use-article-filters';
 import { useReadArticles } from './hooks/use-read-articles';
 import { useFeedData } from './hooks/use-feed-data';
 import { useArticleNavigation } from './hooks/use-article-navigation';
+import { useViewCounts } from './hooks/use-view-counts';
 
 const NotFoundPage: React.FC<{
   title?: string;
@@ -132,6 +133,12 @@ const AppShell: React.FC<{
   const selectedFeed = selectedFeedMeta ? getFeed(selectedFeedMeta.id) || null : null;
   const isAllSchoolsView = selectedFeedMeta?.id === 'all-schools';
 
+  const allGuids = React.useMemo(
+    () => (selectedFeed?.items ?? []).map((a) => a.guid),
+    [selectedFeed]
+  );
+  const viewCounts = useViewCounts(allGuids);
+
   const {
     selectedDate, setSelectedDate,
     activeFilters, setActiveFilters,
@@ -146,7 +153,7 @@ const AppShell: React.FC<{
     tagStats, totalPages, visiblePageTokens,
     articleCountByDate,
     searchHitByArticleId,
-  } = useArticleFilters(selectedFeed, searchData, isAllSchoolsView);
+  } = useArticleFilters(selectedFeed, searchData, isAllSchoolsView, viewCounts);
 
   const {
     activeArticle, activeIndex,
@@ -259,6 +266,7 @@ const AppShell: React.FC<{
               mobileCardLayout={mobileCardLayout}
               onMobileCardLayoutChange={setMobileCardLayout}
               searchHitByArticleId={searchHitByArticleId}
+              viewCounts={viewCounts}
             />
           )}
         </div>

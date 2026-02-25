@@ -11,7 +11,8 @@ export const sortArticles = (
   articles: Article[],
   isAllSchoolsView: boolean,
   sortOrder: 'latest' | 'expiring_soon' | 'popular' = 'latest',
-  nowTs: number = Date.now()
+  nowTs: number = Date.now(),
+  viewCounts?: Record<string, number>
 ): Article[] =>
   articles.slice().sort((a, b) => {
     // 1. Pinned items always go first
@@ -42,6 +43,13 @@ export const sortArticles = (
       }
 
       // Fallback or both expired / no endAt -> Sort by pubDate descending
+    }
+
+    // 3. Popular sort: by view count descending
+    if (sortOrder === 'popular' && viewCounts) {
+      const aViews = viewCounts[a.guid] ?? 0;
+      const bViews = viewCounts[b.guid] ?? 0;
+      if (aViews !== bViews) return bViews - aViews;
     }
 
     // Default / Fallback: Newest pubDate

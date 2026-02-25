@@ -1,5 +1,6 @@
 import React from 'react';
 import { Article, Feed } from '../types';
+import { bumpViewCache } from './use-view-counts';
 
 export function useArticleNavigation(
   filteredArticles: Article[],
@@ -25,6 +26,14 @@ export function useArticleNavigation(
     // Push a new history entry so the back gesture closes the modal
     const next = `${window.location.pathname}${window.location.search}#${article.guid}`;
     window.history.pushState({ modal: true }, '', next);
+
+    // Fire-and-forget view count
+    bumpViewCache(article.guid);
+    fetch('/api/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guid: article.guid }),
+    }).catch(() => {});
   }, [markArticleRead]);
 
   const handlePrev = React.useCallback(() => {

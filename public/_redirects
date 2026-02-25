@@ -12,4 +12,5 @@
 /img/* /img/:splat 200
 /covers/* /covers/:splat 200
 /attachments/* /attachments/:splat 200
+/api/* /api/:splat 200
 /* /index.html 200

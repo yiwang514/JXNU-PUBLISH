@@ -48,12 +48,7 @@ wrangler d1 execute jxnu-views --command "
 5. 顺带清理: DELETE FROM view_logs WHERE ts < (now - 86400)
 ```
 
-### 未来扩展（不在本次范围）
-
-引入匿名访客 cookie（UUID），可实现：
-- 跨请求的访客标识（比 IP 更精确，同一 WiFi 下不同用户可区分）
-- 服务端已读列表持久化（替代 localStorage，支持跨设备同步红点状态）
-- 国内站点无需 cookie 同意弹窗（非广告追踪的 first-party 功能 cookie）
+- 
 
 ## 代码变更
 
