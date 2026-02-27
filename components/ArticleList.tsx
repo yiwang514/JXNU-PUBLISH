@@ -493,7 +493,57 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
               >
                 {mobileCardLayout === 'waterfall' ? (
                   <>
-                    <div className="mx-auto max-w-7xl columns-2 max-[360px]:columns-1 [column-gap:0.75rem] md:hidden">
+                    {/* 双列瀑布流：分离为左右两列以实现左右交替降序 */}
+                    <div className="mx-auto max-w-7xl flex items-start gap-[0.75rem] max-[360px]:hidden md:hidden">
+                      <div className="flex-1 flex flex-col min-w-0">
+                        {paginatedArticlesWithCategory.filter((_, i) => i % 2 === 0).map((article) => (
+                          <div key={article.guid} className="mb-3 break-inside-avoid">
+                            <ArticleCard
+                              article={article}
+                              isSelected={false}
+                              isRead={readArticleIds.has(article.guid)}
+                              onClick={() => handleArticleSelect(article)}
+                              onCategoryClick={onCategorySelect}
+                              onTagClick={onTagSelect}
+                              activeCategoryFilters={activeFilters}
+                              activeTagFilters={activeTagFilters}
+                              searchQuery={searchQuery}
+                              showSchoolTag={isAllSchoolsView}
+                              onSchoolTagClick={onSchoolSummaryJump}
+                              isAllSchoolsView={isAllSchoolsView}
+                              variant="compactNoCover"
+                              searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                              viewCount={viewCounts[article.guid]}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex-1 flex flex-col min-w-0">
+                        {paginatedArticlesWithCategory.filter((_, i) => i % 2 === 1).map((article) => (
+                          <div key={article.guid} className="mb-3 break-inside-avoid">
+                            <ArticleCard
+                              article={article}
+                              isSelected={false}
+                              isRead={readArticleIds.has(article.guid)}
+                              onClick={() => handleArticleSelect(article)}
+                              onCategoryClick={onCategorySelect}
+                              onTagClick={onTagSelect}
+                              activeCategoryFilters={activeFilters}
+                              activeTagFilters={activeTagFilters}
+                              searchQuery={searchQuery}
+                              showSchoolTag={isAllSchoolsView}
+                              onSchoolTagClick={onSchoolSummaryJump}
+                              isAllSchoolsView={isAllSchoolsView}
+                              variant="compactNoCover"
+                              searchHitLocation={searchHitByArticleId.get(article.guid) ?? null}
+                              viewCount={viewCounts[article.guid]}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* 极小屏幕单列 */}
+                    <div className="mx-auto max-w-7xl hidden max-[360px]:flex max-[360px]:flex-col md:hidden">
                       {paginatedArticlesWithCategory.map((article) => (
                         <div key={article.guid} className="mb-3 break-inside-avoid">
                           <ArticleCard
