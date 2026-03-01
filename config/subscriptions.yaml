@@ -64,9 +64,10 @@ schools:
     order: 50
     icon: /img/schoolicon/chem-eng.webp
     subscriptions:
-      - title: 待接入
+      - title: 25级化工院微信群
+        number: "626920516"
         url: ""
-        icon: ""
+        icon: /img/schoolicon/chem-eng.webp
         enabled: true
         order: 10
   - slug: history-tourism
