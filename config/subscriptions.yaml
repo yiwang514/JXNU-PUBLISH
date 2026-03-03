@@ -25,6 +25,12 @@ schools:
         icon: /img/subicon/ai-student-cadre.webp
         enabled: true
         order: 30
+      - title: 向日葵大王后援会
+        number: "910598921"
+        url: ""
+        icon: ""
+        enabled: true
+        order: 40
   - slug: public-funded-normal
     name: 公费师范生学院
     short_name: 公院
