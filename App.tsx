@@ -69,9 +69,10 @@ const useCompiledData = () => {
     let mounted = true;
     const load = async () => {
       try {
+        const bustCache = typeof __BUILD_TIME__ === 'string' ? `?v=${__BUILD_TIME__}` : '';
         const [contentRes, searchRes] = await Promise.all([
-          fetch('/generated/content-data.json'),
-          fetch('/generated/search-index.json'),
+          fetch(`/generated/content-data.json${bustCache}`),
+          fetch(`/generated/search-index.json${bustCache}`),
         ]);
         if (!contentRes.ok) throw new Error(`加载 content-data 失败 (${contentRes.status})`);
         if (!searchRes.ok) throw new Error(`加载 search-index 失败 (${searchRes.status})`);
