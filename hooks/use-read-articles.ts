@@ -31,7 +31,18 @@ export function useReadArticles() {
         removed++;
       }
     }
-    try { localStorage.setItem(READ_KEY, JSON.stringify([...set])); } catch { /* quota exceeded */ }
+    try {
+      localStorage.setItem(READ_KEY, JSON.stringify([...set]));
+    } catch {
+      // Quota exceeded - trim oldest entries and retry
+      const arr = [...set];
+      const trimmed = arr.slice(Math.max(0, arr.length - 500));
+      try {
+        localStorage.setItem(READ_KEY, JSON.stringify(trimmed));
+      } catch {
+        // Storage completely unavailable, continue in-memory only
+      }
+    }
     setReadVersion((v) => v + 1);
   }, []);
 

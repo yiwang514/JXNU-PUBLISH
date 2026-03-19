@@ -39,6 +39,7 @@ const DailySummaryPanel: React.FC<{
   const [dailySummaryText, setDailySummaryText] = React.useState('');
   const [summaryNotFound, setSummaryNotFound] = React.useState(false);
   const typingTimerRef = React.useRef<number | null>(null);
+  const indexRef = React.useRef(0);
 
   React.useEffect(() => {
     return () => {
@@ -98,13 +99,13 @@ const DailySummaryPanel: React.FC<{
     }
 
     setIsTypingSummary(true);
-    let index = 0;
+    indexRef.current = 0;
     const chunk = Math.max(2, Math.ceil(fullText.length / 60));
 
     typingTimerRef.current = window.setInterval(() => {
-      index = Math.min(fullText.length, index + chunk);
-      setDailySummaryText(fullText.slice(0, index));
-      if (index >= fullText.length) {
+      indexRef.current = Math.min(fullText.length, indexRef.current + chunk);
+      setDailySummaryText(fullText.slice(0, indexRef.current));
+      if (indexRef.current >= fullText.length) {
         if (typingTimerRef.current) {
           window.clearInterval(typingTimerRef.current);
           typingTimerRef.current = null;
@@ -170,6 +171,8 @@ interface RightSidebarProps {
   selectedFeedId: string | null;
 }
 
+const TAG_COLLAPSE_THRESHOLD = 6;
+
 export const RightSidebar: React.FC<RightSidebarProps> = React.memo(({
   isOpen,
   onClose,
@@ -189,7 +192,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = React.memo(({
   selectedFeedId,
 }) => {
   const [tagStatsExpanded, setTagStatsExpanded] = React.useState(false);
-  const shouldCollapseTagStats = tagStats.length > 6;
+  const shouldCollapseTagStats = tagStats.length > TAG_COLLAPSE_THRESHOLD;
 
   React.useEffect(() => {
     setTagStatsExpanded(false);
@@ -312,7 +315,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = React.memo(({
                     ) : (
                       <>
                         <ChevronDown className="h-3.5 w-3.5" />
-                        <span>展开剩余{tagStats.length - 6}项</span>
+                        <span>展开剩余{tagStats.length - TAG_COLLAPSE_THRESHOLD}项</span>
                       </>
                     )}
                   </button>

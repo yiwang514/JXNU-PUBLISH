@@ -65,12 +65,24 @@ const resolveInputPath = (urlPath) => {
   };
 };
 
+const assertWithinDir = (filePath, allowedDir, label) => {
+  const normalized = path.normalize(filePath);
+  const normalizedDir = path.normalize(allowedDir) + path.sep;
+  if (!normalized.startsWith(normalizedDir) && normalized !== path.normalize(allowedDir)) {
+    throw new Error(`${label} path escapes allowed directory: ${normalized}`);
+  }
+};
+
 const optimizeOne = async (urlPath) => {
   const { sourcePath, outputBase } = resolveInputPath(urlPath);
   const absInput = (await pathExists(sourcePath)) ? sourcePath : outputBase;
   if (!(await pathExists(absInput))) {
     return { skipped: true, reason: 'missing' };
   }
+
+  // Validate that resolved paths stay within expected directories
+  assertWithinDir(absInput, absInput === sourcePath ? CONTENT_DIR : PUBLIC_DIR, 'Input');
+  assertWithinDir(outputBase, PUBLIC_DIR, 'Output');
 
   await fs.mkdir(path.dirname(outputBase), { recursive: true });
 
@@ -116,6 +128,7 @@ const optimizeOne = async (urlPath) => {
   try {
     for (const output of outputs) {
       const outPath = `${base}${output.suffix}`;
+      assertWithinDir(outPath, PUBLIC_DIR, 'Output');
       const vf = output.width
         ? `scale='min(iw,${output.width})':-2:flags=lanczos`
         : 'scale=iw:-2:flags=lanczos';

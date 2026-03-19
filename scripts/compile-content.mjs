@@ -76,28 +76,35 @@ const toBoolean = (value, fallback = false) => {
   return fallback;
 };
 
-const normalizeAttachmentUrl = (value, filePath) => {
-  const clean = String(value || '').trim().replace(/\\/g, '/');
-  if (!clean) return '';
-  if (clean === '#') return clean;
-  if (clean.includes('..')) fail(`Suspicious path: ${clean}`, filePath);
-  if (/^https?:\/\//i.test(clean)) return clean;
-
-  if (clean.startsWith('/attachments/')) return clean;
-  if (clean.startsWith('./attachments/')) return `/attachments/${clean.slice('./attachments/'.length)}`;
-  if (clean.startsWith('attachments/')) return `/attachments/${clean.slice('attachments/'.length)}`;
-
-  if (clean.startsWith('/')) return clean;
-
-  return `/attachments/${clean.replace(/^\.?\/+/, '')}`;
-};
-
 const safeDecodeUriComponent = (value) => {
   try {
     return decodeURIComponent(value);
   } catch {
     return value;
   }
+};
+
+const normalizeAttachmentUrl = (value, filePath) => {
+  const clean = String(value || '').trim().replace(/\\/g, '/');
+  if (!clean) return '';
+  if (clean === '#') return clean;
+  const decoded = safeDecodeUriComponent(clean);
+  if (clean.includes('..') || decoded.includes('..')) fail(`Suspicious path: ${clean}`, filePath);
+  if (/^https?:\/\//i.test(clean)) return clean;
+
+  const normalizedUrl = clean.startsWith('/attachments/') ? clean
+    : clean.startsWith('./attachments/') ? `/attachments/${clean.slice('./attachments/'.length)}`
+    : clean.startsWith('attachments/') ? `/attachments/${clean.slice('attachments/'.length)}`
+    : clean.startsWith('/') ? clean
+    : `/attachments/${clean.replace(/^\.?\/+/, '')}`;
+
+  // Path traversal validation: resolve the final path and ensure it stays within CONTENT_DIR
+  const resolved = path.resolve(CONTENT_DIR, normalizedUrl.replace(/^\//, ''));
+  if (!resolved.startsWith(CONTENT_DIR)) {
+    fail(`Path traversal detected: ${clean} resolves outside content directory`, filePath);
+  }
+
+  return normalizedUrl;
 };
 
 const toAttachmentRelativePath = (url) => {
@@ -219,7 +226,7 @@ const extractInlineAttachments = (markdown) => {
   const result = [];
   const text = String(markdown || '');
 
-  const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const imgRe = /!\[([^\]]{0,500})\]\(([^)\s]{0,2000})\)/g;
   let match;
   while ((match = imgRe.exec(text))) {
     const alt = String(match[1] || '').trim();
@@ -232,7 +239,7 @@ const extractInlineAttachments = (markdown) => {
     });
   }
 
-  const linkRe = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
+  const linkRe = /(?<!!)\[([^\]]{1,500})\]\(([^)\s]{1,2000})\)/g;
   while ((match = linkRe.exec(text))) {
     const name = String(match[1] || '').trim();
     const url = String(match[2] || '').trim();
@@ -416,6 +423,11 @@ const loadCards = async ({ schoolMap, subscriptionMap }) => {
     if (!id) fail('Missing card id', filePath);
     if (seen.has(id)) fail(`Duplicate card id: ${id}`, filePath);
     seen.add(id);
+
+    // Warn if description field does not use >- folded block scalar syntax
+    if (parsed.data.description && !/description:\s*>-/m.test(raw)) {
+      console.warn(`[description] Missing >- syntax for description field: ${path.relative(ROOT, filePath)}`);
+    }
 
     const rawSchoolSlug = String(parsed.data.school_slug || '').trim();
     const schoolSlug = rawSchoolSlug && schoolMap.has(rawSchoolSlug) ? rawSchoolSlug : UNKNOWN_SCHOOL;
@@ -628,8 +640,25 @@ const writeOutputs = async (compiled) => {
     conclusionBySchool: compiled.conclusionBySchool,
   };
 
-  await fs.writeFile(path.join(PUBLIC_GENERATED_DIR, 'content-data.json'), `${JSON.stringify(contentData, null, 2)}\n`, 'utf8');
-  await fs.writeFile(path.join(PUBLIC_GENERATED_DIR, 'search-index.json'), `${JSON.stringify(compiled.searchIndex, null, 2)}\n`, 'utf8');
+  const contentDataFinal = path.join(PUBLIC_GENERATED_DIR, 'content-data.json');
+  const searchIndexFinal = path.join(PUBLIC_GENERATED_DIR, 'search-index.json');
+  const contentDataTmp = path.join(PUBLIC_GENERATED_DIR, '.content-data.json.tmp');
+  const searchIndexTmp = path.join(PUBLIC_GENERATED_DIR, '.search-index.json.tmp');
+
+  try {
+    // Write to temporary files first
+    await fs.writeFile(contentDataTmp, `${JSON.stringify(contentData, null, 2)}\n`, 'utf8');
+    await fs.writeFile(searchIndexTmp, `${JSON.stringify(compiled.searchIndex, null, 2)}\n`, 'utf8');
+
+    // Atomic swap: rename temps to final names
+    await fs.rename(contentDataTmp, contentDataFinal);
+    await fs.rename(searchIndexTmp, searchIndexFinal);
+  } catch (err) {
+    // Clean up temp files on failure
+    await fs.unlink(contentDataTmp).catch(() => {});
+    await fs.unlink(searchIndexTmp).catch(() => {});
+    throw err;
+  }
 };
 
 const syncStaticAssets = async () => {
@@ -639,38 +668,50 @@ const syncStaticAssets = async () => {
     fs.mkdir(PUBLIC_ATTACHMENTS_DIR, { recursive: true }),
   ]);
 
-  await Promise.all([
-    fs.cp(CARD_COVERS_DIR, PUBLIC_COVERS_DIR, { recursive: true, force: true }).catch((err) => {
-      console.warn(`[sync] Failed to copy ${path.relative(ROOT, CARD_COVERS_DIR)}: ${err.message}`);
-    }),
-    fs.cp(CONTENT_IMG_DIR, PUBLIC_IMG_DIR, { recursive: true, force: true }).catch((err) => {
-      console.warn(`[sync] Failed to copy ${path.relative(ROOT, CONTENT_IMG_DIR)}: ${err.message}`);
-    }),
-  ]);
+  const criticalTasks = [
+    { label: `copy ${path.relative(ROOT, CARD_COVERS_DIR)}`, promise: fs.cp(CARD_COVERS_DIR, PUBLIC_COVERS_DIR, { recursive: true, force: true }) },
+    { label: `copy ${path.relative(ROOT, CONTENT_IMG_DIR)}`, promise: fs.cp(CONTENT_IMG_DIR, PUBLIC_IMG_DIR, { recursive: true, force: true }) },
+  ];
 
   if (R2_PUBLIC_BASE_URL) {
     await fs.rm(PUBLIC_ATTACHMENTS_DIR, { recursive: true, force: true });
     await fs.mkdir(PUBLIC_ATTACHMENTS_DIR, { recursive: true });
-    await fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, {
-      recursive: true,
-      force: true,
-      filter: async (src) => {
-        try {
-          const stat = await fs.stat(src);
-          if (stat.isDirectory()) return true;
-          if (!stat.isFile()) return false;
-          return stat.size <= ATTACHMENT_R2_THRESHOLD_BYTES;
-        } catch {
-          return false;
-        }
-      },
-    }).catch((err) => {
-      console.warn(`[sync] Failed to copy filtered attachments: ${err.message}`);
+    criticalTasks.push({
+      label: 'copy filtered attachments',
+      promise: fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, {
+        recursive: true,
+        force: true,
+        filter: async (src) => {
+          try {
+            const stat = await fs.stat(src);
+            if (stat.isDirectory()) return true;
+            if (!stat.isFile()) return false;
+            return stat.size <= ATTACHMENT_R2_THRESHOLD_BYTES;
+          } catch {
+            return false;
+          }
+        },
+      }),
     });
   } else {
-    await fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, { recursive: true, force: true }).catch((err) => {
-      console.warn(`[sync] Failed to copy ${path.relative(ROOT, CONTENT_ATTACHMENTS_DIR)}: ${err.message}`);
+    criticalTasks.push({
+      label: `copy ${path.relative(ROOT, CONTENT_ATTACHMENTS_DIR)}`,
+      promise: fs.cp(CONTENT_ATTACHMENTS_DIR, PUBLIC_ATTACHMENTS_DIR, { recursive: true, force: true }),
     });
+  }
+
+  const results = await Promise.allSettled(criticalTasks.map((t) => t.promise));
+  const failures = [];
+  for (let i = 0; i < results.length; i += 1) {
+    if (results[i].status === 'rejected') {
+      const label = criticalTasks[i].label;
+      console.error(`[sync] Failed to ${label}: ${results[i].reason?.message || results[i].reason}`);
+      failures.push(label);
+    }
+  }
+  if (failures.length > 0) {
+    console.error(`[sync] ${failures.length} critical asset sync(s) failed: ${failures.join(', ')}`);
+    process.exit(1);
   }
 
   const iconSource = path.join(CONTENT_IMG_DIR, 'icon.ico');

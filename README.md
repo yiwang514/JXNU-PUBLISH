@@ -107,6 +107,20 @@ pnpm run dev
 
 要求 Node.js >= 22。
 
+### dev 分支开发
+
+dev 分支不跟踪 `content/`、`archive/`、`worklog/` 等内容目录，避免与 test/main 的内容更新产生冲突。开发前端功能时，按需从 main 同步最新内容数据：
+
+```bash
+# 从 main 分支编译最新内容数据（推荐）
+git checkout main -- content/ && pnpm run build:content && git checkout -- content/
+
+# 或者直接从 main 提取已编译的 JSON（如果 main 上有）
+git show main:generated/content-data.json > generated/content-data.json
+```
+
+功能开发完成后，直接 PR 到 main 即可，不会与内容文件冲突。
+
 ## 构建命令
 
 ```bash

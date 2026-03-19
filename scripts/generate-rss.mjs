@@ -48,6 +48,21 @@ const sortedNotices = (notices) => {
   });
 };
 
+const enclosureMimeByExt = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+};
+
+const enclosureMimeFor = (url) => {
+  const ext = String(url || '').split('.').pop().toLowerCase();
+  return enclosureMimeByExt[ext] || 'application/octet-stream';
+};
+
 const toItemXml = (notice) => {
   const schoolSlug = String(notice.schoolSlug || '').trim();
   const id = String(notice.guid || '').trim();
@@ -62,6 +77,12 @@ const toItemXml = (notice) => {
     .map((tag) => `<category>${escapeXml(tag)}</category>`)
     .join('');
 
+  const attachments = Array.isArray(notice.attachments) ? notice.attachments : [];
+  const firstAttachment = attachments.length > 0 ? attachments[0] : null;
+  const enclosure = firstAttachment && firstAttachment.url
+    ? `<enclosure url="${escapeXml(`${SITE_URL}${firstAttachment.url}`)}" type="${enclosureMimeFor(firstAttachment.url)}" length="0" />`
+    : '';
+
   return [
     '<item>',
     `<title>${escapeXml(title)}</title>`,
@@ -70,6 +91,7 @@ const toItemXml = (notice) => {
     `<pubDate>${escapeXml(pubDate)}</pubDate>`,
     `<description>${escapeXml(description)}</description>`,
     categories,
+    enclosure,
     '</item>',
   ].join('');
 };
