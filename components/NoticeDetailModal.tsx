@@ -19,6 +19,7 @@ import { Article } from '../types';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { useNow } from '@/hooks/use-now';
 import { getTimeWindowState, formatTimestamp } from '@/lib/time-window';
 import { CountdownBar, LiveCountdownBar } from './CountdownBar';
 import jxnuLogo from '../content/img/JXNUlogo.png';
@@ -72,8 +73,10 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = React.memo(({
     onClose();
   }, [onClose]);
 
-  // Use a static timing state for non-live elements (upcoming/expired)
-  const timing = React.useMemo(() => getTimeWindowState(article?.startAt, article?.endAt, Date.now()), [article?.startAt, article?.endAt]);
+  // Use a periodically-refreshed now so timing badges update while the modal is open
+  const hasTimeWindow = Boolean(article?.startAt || article?.endAt);
+  const now = useNow(hasTimeWindow);
+  const timing = React.useMemo(() => getTimeWindowState(article?.startAt, article?.endAt, now), [article?.startAt, article?.endAt, now]);
 
   React.useEffect(() => {
     if (!article) return;

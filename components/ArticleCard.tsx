@@ -11,6 +11,9 @@ import jxnuLogo from '../content/img/JXNUlogo.png';
 import { renderHighlightedText, renderSimpleMarkdown } from '../lib/simple-markdown';
 import { getResponsiveCoverAttrs } from '../services/responsiveImage';
 
+const MAX_VISIBLE_TAGS = 4;
+const RESERVED_TAGS = ['学院通知'];
+
 interface ArticleCardProps {
   article: Article;
   onClick: () => void;
@@ -108,9 +111,9 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
     return article.tags
       .filter((tag) => {
         const clean = String(tag).trim();
-        return clean.length > 0 && clean !== '学院通知';
+        return clean.length > 0 && !RESERVED_TAGS.includes(clean);
       })
-      .slice(0, 4);
+      .slice(0, MAX_VISIBLE_TAGS);
   }, [article.tags]);
 
   const primaryCategory = useMemo(() => {
@@ -244,6 +247,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({
                     onSchoolTagClick?.(article.schoolSlug);
                   }}
                   className="inline-flex h-6 items-center justify-center text-center leading-none rounded font-semibold border border-sky-600/70 bg-sky-600 text-white hover:bg-sky-700 transition-colors text-[11px] px-2.5"
+                  aria-label={`查看${article.feedTitle}学院的通知`}
                 >
                   {article.feedTitle}
                 </button>

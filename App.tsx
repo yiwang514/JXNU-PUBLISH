@@ -11,6 +11,7 @@ import { useReadArticles } from './hooks/use-read-articles';
 import { useFeedData } from './hooks/use-feed-data';
 import { useArticleNavigation } from './hooks/use-article-navigation';
 import { useViewCounts } from './hooks/use-view-counts';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const NotFoundPage: React.FC<{
   title?: string;
@@ -48,6 +49,17 @@ const NotFoundPage: React.FC<{
     );
   };
 
+function isValidCompiledContent(data: unknown): data is CompiledContent {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.generatedAt === 'string' &&
+    Array.isArray(d.schools) &&
+    Array.isArray(d.subscriptions) &&
+    Array.isArray(d.notices)
+  );
+}
+
 const useCompiledData = () => {
   const [contentData, setContentData] = React.useState<CompiledContent | null>(null);
   const [searchData, setSearchData] = React.useState<SearchItem[]>([]);
@@ -57,17 +69,22 @@ const useCompiledData = () => {
     let mounted = true;
     const load = async () => {
       try {
+        const bustCache = typeof __BUILD_TIME__ === 'string' ? `?v=${__BUILD_TIME__}` : '';
         const [contentRes, searchRes] = await Promise.all([
-          fetch('/generated/content-data.json'),
-          fetch('/generated/search-index.json'),
+          fetch(`/generated/content-data.json${bustCache}`),
+          fetch(`/generated/search-index.json${bustCache}`),
         ]);
         if (!contentRes.ok) throw new Error(`加载 content-data 失败 (${contentRes.status})`);
         if (!searchRes.ok) throw new Error(`加载 search-index 失败 (${searchRes.status})`);
 
         const [contentJson, searchJson] = await Promise.all([
-          contentRes.json() as Promise<CompiledContent>,
+          contentRes.json(),
           searchRes.json() as Promise<SearchItem[]>,
         ]);
+
+        if (!isValidCompiledContent(contentJson)) {
+          throw new Error('Invalid content-data.json structure');
+        }
 
         if (!mounted) return;
         setContentData(contentJson);
@@ -210,6 +227,7 @@ const AppShell: React.FC<{
 
       <main className="flex-1 flex flex-col h-full bg-background relative overflow-hidden min-w-0">
         <div className="flex-1 min-h-0 overflow-hidden">
+          <ErrorBoundary>
           {mode === 'dashboard' ? (
             <Dashboard
               feedEntries={schoolFeedEntries}
@@ -269,6 +287,7 @@ const AppShell: React.FC<{
               viewCounts={viewCounts}
             />
           )}
+          </ErrorBoundary>
         </div>
       </main>
 

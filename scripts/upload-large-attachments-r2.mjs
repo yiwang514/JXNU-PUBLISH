@@ -19,6 +19,19 @@ const secretAccessKey = String(process.env.R2_SECRET_ACCESS_KEY || '').trim();
 const publicBaseUrl = String(process.env.R2_PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '');
 const dryRun = String(process.env.R2_UPLOAD_DRY_RUN || '').trim() === '1';
 
+if (endpoint) {
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol !== 'https:') {
+      console.error('[r2-upload] R2_S3_ENDPOINT must use HTTPS');
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`[r2-upload] Invalid R2_S3_ENDPOINT URL: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 const hasAllRequiredConfig = Boolean(bucket && endpoint && accessKeyId && secretAccessKey && publicBaseUrl);
 
 const walkFiles = async (dir) => {
