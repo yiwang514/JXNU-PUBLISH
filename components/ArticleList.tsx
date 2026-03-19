@@ -1,5 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 import {
   PanelLeft,
   PanelRight,
@@ -106,7 +115,8 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
   const pullIndicatorRef = React.useRef<HTMLDivElement | null>(null);
   const isPullReadyRef = React.useRef(false);
 
-  const scrollResetKey = `${currentPage}::${activeFilters.join('|')}::${activeTagFilters.join('|')}::${searchQuery}::${selectedDate?.getTime() ?? ''}`;
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const scrollResetKey = `${currentPage}::${activeFilters.join('|')}::${activeTagFilters.join('|')}::${debouncedSearchQuery}::${selectedDate?.getTime() ?? ''}`;
   const prevScrollResetKeyRef = React.useRef(scrollResetKey);
 
   const getViewport = React.useCallback(() => {
