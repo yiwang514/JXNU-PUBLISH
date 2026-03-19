@@ -31,6 +31,7 @@ jobs:
     name: Deploy test branch to Cloudflare Pages
     runs-on: ubuntu-latest
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       NODE_VERSION: "22"
       CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME }}
       SITE_URL: ${{ secrets.CLOUDFLARE_PAGES_TEST_URL }}
@@ -114,4 +115,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           command: pages deploy dist --project-name=${{ env.CLOUDFLARE_PROJECT_NAME }} --branch=test
