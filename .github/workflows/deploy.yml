@@ -67,6 +67,8 @@ jobs:
           mkdir -p public/generated
           SNAPSHOT_URL="$PAGES_URL/generated/content-data.json"
           TMP_FILE="$(mktemp)"
+          chmod 600 "$TMP_FILE"
+          trap "rm -f '$TMP_FILE'" EXIT
 
           if curl -fsSL -H 'Cache-Control: no-cache' "$SNAPSHOT_URL" -o "$TMP_FILE"; then
             if node -e "const fs=require('node:fs');const f=process.argv[1];const data=JSON.parse(fs.readFileSync(f,'utf8'));const n=Number(data?.totalNotices ?? (Array.isArray(data?.notices)?data.notices.length:NaN));if(!Number.isFinite(n)){process.exit(2)};console.log('Restored previous notices:',n);" "$TMP_FILE"; then

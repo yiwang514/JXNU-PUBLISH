@@ -329,7 +329,7 @@ const ArticleListComponent: React.FC<ArticleListProps> = ({
         onReset={() => handleFilterToggle('__reset__')} // Note: Logic handled in App.tsx
       />
 
-      <ScrollArea ref={articleListRef as any} className="flex-1 bg-muted/10">
+      <ScrollArea ref={articleListRef as React.RefObject<HTMLDivElement & HTMLElement>} className="flex-1 bg-muted/10">
         <div className="p-4 md:p-8">
           {/* Pull-to-refresh indicator */}
           <div

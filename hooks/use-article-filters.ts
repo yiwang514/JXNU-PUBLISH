@@ -5,6 +5,15 @@ import { getTimeWindowState } from '../lib/time-window';
 import { sortArticles } from '../lib/sort-articles';
 import { useNow } from './use-now';
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 const ARTICLES_PER_PAGE = 12;
 type SearchHitLocation = 'content' | 'attachment' | 'content+attachment';
 
@@ -123,8 +132,10 @@ export function useFilteredArticles(
 
   const nowTs = useNow(hideExpired || timedOnly || sortOrder === 'expiring_soon', 30_000);
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const { searchMatches, searchHitByArticleId } = React.useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = debouncedSearchQuery.trim().toLowerCase();
     if (!query) {
       return {
         searchMatches: null as Set<string> | null,
@@ -160,7 +171,7 @@ export function useFilteredArticles(
       searchMatches: set,
       searchHitByArticleId: hitMap,
     };
-  }, [searchData, searchQuery]);
+  }, [searchData, debouncedSearchQuery]);
 
   const baseArticles = React.useMemo(() => {
     if (!selectedFeed) return [];

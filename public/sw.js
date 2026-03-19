@@ -1,7 +1,7 @@
 // Minimal service worker — required for PWA installability.
 // Serves a basic offline fallback; all real content is fetched from network.
 
-const CACHE_NAME = 'jxnu-publish-v1';
+const CACHE_NAME = 'jxnu-publish-__BUILD_VERSION__';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
