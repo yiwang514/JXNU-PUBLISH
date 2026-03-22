@@ -1,12 +1,12 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import fs from "fs";
 import path from "path";
-import mime from "mime-types";
 
-// 1. 初始化 S3 客户端 (完美适配流水线里的全局环境变量)
+
+// 1. 初始化 S3 客户端
 const s3Client = new S3Client({
   region: "auto",
-  endpoint: process.env.R2_S3_ENDPOINT, // 直接读取 YAML 里的 endpoint
+  endpoint: process.env.R2_S3_ENDPOINT,
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
@@ -14,14 +14,30 @@ const s3Client = new S3Client({
 });
 
 const BUCKET_NAME = process.env.R2_BUCKET;
-// 扫描构建后的 dist 目录
 const TARGET_DIR = path.resolve(process.cwd(), "dist");
 
-// 定义需要上传的媒体文件后缀 (和 YAML 里的 find 删除命令保持一致)
 const MEDIA_EXTENSIONS = [
   ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", 
   ".mp4", ".pdf", ".docx", ".zip"
 ];
+
+// 🌟 新增：手写一个轻量级的 MIME 类型映射字典
+const getMimeType = (filePath) => {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".webp": "image/webp",
+    ".mp4": "video/mp4",
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".zip": "application/zip",
+  };
+  return mimeMap[ext] || "application/octet-stream"; // 匹配不到就用默认二进制流
+};
 
 // 2. 递归获取目录下指定的媒体文件
 function getMediaFiles(dirPath, arrayOfFiles = []) {
@@ -59,12 +75,12 @@ async function syncToR2() {
 
   console.log(`📦 共发现 ${files.length} 个媒体文件，准备上传...`);
 
-  // 使用 Promise.all 并发上传。如果文件数量极大（例如过万），建议后续引入 p-limit 控制并发数
   const uploadPromises = files.map(async (filePath) => {
-    // 保持相对路径结构（例如：将 dist/assets/image.webp 映射为 R2 中的 assets/image.webp）
     const objectKey = path.relative(TARGET_DIR, filePath).replace(/\\/g, "/");
     const fileStream = fs.createReadStream(filePath);
-    const contentType = mime.lookup(filePath) || "application/octet-stream";
+    
+    // 🌟 使用我们自己写的映射方法
+    const contentType = getMimeType(filePath);
 
     const uploadParams = {
       Bucket: BUCKET_NAME,
@@ -75,7 +91,7 @@ async function syncToR2() {
 
     try {
       await s3Client.send(new PutObjectCommand(uploadParams));
-      console.log(`✅ 上传成功: ${objectKey}`);
+      console.log(`✅ 上传成功: ${objectKey} (${contentType})`);
     } catch (error) {
       console.error(`❌ 上传失败: ${objectKey}`, error.message);
     }
