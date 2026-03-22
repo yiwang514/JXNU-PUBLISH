@@ -98,6 +98,17 @@ jobs:
           R2_PUBLIC_BASE_URL: ${{ env.R2_PUBLIC_BASE_URL }}
         run: pnpm run build
 
+
+      - name: Sync all remaining media to R2 (Fallback for 20k limits)
+        run: node scripts/sync-media-to-r2.mjs
+
+      - name: Clean up media files to avoid Pages 20k file limit
+        run: |
+          echo "🧹 开始清理测试环境打包产物 (dist) 中的媒体文件..."
+          find dist -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.gif" -o -name "*.svg" -o -name "*.webp" -o -name "*.mp4" -o -name "*.pdf" -o -name "*.docx" -o -name "*.zip" \) -delete
+          echo "✅ 清理完成！测试环境部署安全。"
+
+
       - name: Verify build artifacts
         run: |
           test -f dist/index.html || (echo "dist/index.html missing" && exit 1)
