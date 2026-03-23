@@ -3,6 +3,7 @@ import nodeFs from 'node:fs';
 import path from 'node:path';
 import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
+import { normalizePublicBaseUrl, siteUrlToR2Key } from './lib/r2-paths.mjs';
 
 const ROOT = process.cwd();
 const ATTACHMENTS_DIR = path.join(ROOT, 'content', 'attachments');
@@ -16,7 +17,7 @@ const bucket = String(process.env.R2_BUCKET || '').trim();
 const endpoint = String(process.env.R2_S3_ENDPOINT || '').trim();
 const accessKeyId = String(process.env.R2_ACCESS_KEY_ID || '').trim();
 const secretAccessKey = String(process.env.R2_SECRET_ACCESS_KEY || '').trim();
-const publicBaseUrl = String(process.env.R2_PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '');
+const publicBaseUrl = normalizePublicBaseUrl(process.env.R2_PUBLIC_BASE_URL);
 const dryRun = String(process.env.R2_UPLOAD_DRY_RUN || '').trim() === '1';
 
 if (endpoint) {
@@ -52,7 +53,10 @@ const walkFiles = async (dir) => {
   return files.flat();
 };
 
-const toPosixRelative = (absolutePath) => path.relative(ATTACHMENTS_DIR, absolutePath).split(path.sep).join('/');
+const attachmentFilePathToSiteUrl = (absolutePath) => {
+  const relativePath = path.relative(ATTACHMENTS_DIR, absolutePath).split(path.sep).join('/');
+  return `/attachments/${relativePath}`;
+};
 
 const mimeByExt = {
   pdf: 'application/pdf',
@@ -127,7 +131,11 @@ const main = async () => {
     const stat = await fs.stat(filePath);
     if (!stat.isFile()) continue;
     if (stat.size <= thresholdBytes) continue;
-    oversized.push({ filePath, size: stat.size, key: toPosixRelative(filePath) });
+    oversized.push({
+      filePath,
+      size: stat.size,
+      key: siteUrlToR2Key(attachmentFilePathToSiteUrl(filePath)),
+    });
   }
 
   if (oversized.length === 0) {
