@@ -102,16 +102,6 @@ jobs:
       - name: Sync all remaining media to R2 (Fallback for 20k limits)
         run: node scripts/sync-media-to-r2.mjs
 
-      - name: Clean up specific media folders to avoid Pages 20k file limit
-        run: |
-          echo "🧹 开始清理已成功上云的特定文件夹内容..."
-          # 仅清空 attachments, covers, img 目录下的内容，保留空文件夹结构以防报错
-          # 2>/dev/null 用于防止某些文件夹不存在时终端抛出异常
-          rm -rf dist/attachments/* dist/covers/* dist/img/* 2>/dev/null || true
-          echo "✅ 清理完成！测试环境部署安全。"
-
-
-
       - name: Verify build artifacts
         run: |
           test -f dist/index.html || (echo "dist/index.html missing" && exit 1)
