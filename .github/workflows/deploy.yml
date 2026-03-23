@@ -98,6 +98,10 @@ jobs:
           R2_PUBLIC_BASE_URL: ${{ env.R2_PUBLIC_BASE_URL }}
         run: pnpm run build
 
+
+      - name: Sync all remaining media to R2 (Fallback for 20k limits)
+        run: node scripts/sync-media-to-r2.mjs
+
       - name: Verify build artifacts
         run: |
           test -f dist/index.html || (echo "dist/index.html missing" && exit 1)

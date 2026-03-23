@@ -3,6 +3,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 import YAML from 'yaml';
+import { normalizePublicBaseUrl, siteUrlToR2PublicUrl } from './lib/r2-paths.mjs';
 
 // Disable indented code blocks — the card markdown files use leading spaces
 // for Chinese-style paragraph indentation, not code.  Fenced code blocks
@@ -29,7 +30,6 @@ const PUBLIC_COVERS_DIR = path.join(PUBLIC_DIR, 'covers');
 const PUBLIC_ATTACHMENTS_DIR = path.join(PUBLIC_DIR, 'attachments');
 const CONFIG_PATH = path.join(ROOT, 'config', 'subscriptions.yaml');
 
-const normalizePublicBaseUrl = (value) => String(value || '').trim().replace(/\/+$/, '');
 const R2_PUBLIC_BASE_URL = normalizePublicBaseUrl(process.env.R2_PUBLIC_BASE_URL);
 const ATTACHMENT_R2_THRESHOLD_MB = Number.parseFloat(process.env.ATTACHMENT_R2_THRESHOLD_MB || '20');
 const ATTACHMENT_R2_THRESHOLD_BYTES = Number.isFinite(ATTACHMENT_R2_THRESHOLD_MB) && ATTACHMENT_R2_THRESHOLD_MB > 0
@@ -125,14 +125,9 @@ const toAttachmentAbsolutePath = (url) => {
 };
 
 const toR2PublicUrl = (url) => {
-  const rel = toAttachmentRelativePath(url);
-  if (!rel || !R2_PUBLIC_BASE_URL) return url;
-  const encodedRel = rel
-    .split('/')
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-  return `${R2_PUBLIC_BASE_URL}/${encodedRel}`;
+  const cleanUrl = String(url || '').split('#')[0].split('?')[0].trim();
+  if (!toAttachmentRelativePath(cleanUrl) || !R2_PUBLIC_BASE_URL) return url;
+  return siteUrlToR2PublicUrl(cleanUrl, R2_PUBLIC_BASE_URL);
 };
 
 const resolveAttachmentUrlForOutput = async (url, filePath) => {
