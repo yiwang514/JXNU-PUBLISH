@@ -90,15 +90,14 @@ jobs:
       - name: Sync all remaining media to R2 (Fallback for 20k limits)
         run: node scripts/sync-media-to-r2.mjs
 
-      - name: Clean up media files to avoid Pages 20k file limit
+      - name: Clean up specific media folders to avoid Pages 20k file limit
         run: |
-          echo "🧹 开始清理打包产物 (dist) 中的媒体文件，防止随包上传 CF Pages..."
-          
-          # 使用 find 命令精准拦截媒体后缀，防止误删 JS/CSS 等核心逻辑文件
-          # 如果你们有其他特定的文件格式（比如 .xls, .ppt），可以在下面这行加进去
-          find dist -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.gif" -o -name "*.svg" -o -name "*.webp" -o -name "*.mp4" -o -name "*.pdf" -o -name "*.docx" -o -name "*.zip" \) -delete
-        
-          echo "✅ 清理完成！CF Pages 压力已释放。"
+          echo "🧹 开始清理已成功上云的特定文件夹内容..."
+          # 仅清空 attachments, covers, img 目录下的内容，保留空文件夹结构以防报错
+          # 2>/dev/null 用于防止某些文件夹不存在时终端抛出异常
+          rm -rf dist/attachments/* dist/covers/* dist/img/* 2>/dev/null || true
+          echo "✅ 清理完成！测试环境部署安全。"
+
 
       - name: Verify build artifacts
         run: |
