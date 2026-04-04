@@ -12,8 +12,8 @@ assignees: ''
 **ZH:** 如果你发现了安全漏洞，请**不要**直接创建公开 Issue。
 
 ### 📩 How to report / 如何报告
-**EN:** Please send the details to: sallyn0225@foxmail.com
-**ZH:** 请将详细信息发送至：sallyn0225@foxmail.com
+**EN:** Please send the details to: guiguisocute@qq.com
+**ZH:** 请将详细信息发送至：guiguisocute@qq.com
 
 
 ---
