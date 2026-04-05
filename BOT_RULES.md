@@ -6,8 +6,10 @@
 
 采用 archive 读取模式：
 
-- Bot 读取 `archive/` 目录下的结构化数据作为主要输入源。
-- `archive/YYYY-MM-DD/` 目录由外部程序（astrbot-QQtoTele）自动生成并持续更新，通过共享挂载写入本项目。
+- `archive/` 是主仓库挂载的独立 Git submodule，数据由 archive 独立仓库维护。
+- Bot 读取 `archive/` 目录下的结构化数据作为主要输入源，但不在主仓库内提交 archive 内容。
+- `archive/YYYY-MM-DD/` 目录由外部程序（astrbot-QQtoTele）写入 archive 独立仓库并持续更新。
+- 如需同步最新 archive 数据，先在 `archive/` 子仓库内执行拉取，再回到主仓库处理内容。
 - 检测到新的日期目录或已有目录中 `messages.md` 文件更新后，立即触发增量处理。
 - 每次增量处理控制批大小，避免上下文爆炸。
 - TG 直接转发仅作为偶尔的补充输入，处理规则与 archive 输入一致。
@@ -16,14 +18,34 @@
 
 ## 2. 分支与写入边界
 
+- 默认工作分支为 `test`。
+- 未经用户明确允许，不得在 `main` 上修改、提交、推送；本地提交也不得先落在 `main`。
 - 自动写入只允许推送到 `test` 分支。
-- `main` 仅用于人工审核后发布。
-- 允许修改：`content/**/*.md`、`worklog/**/*.md`。
-- 禁止修改：`config/subscriptions.yaml`、`public/generated/**`、脚本/前端代码。
+- `main` 仅用于人工审核通过后同步发布。
+
+主仓库允许修改：
+
+- `content/**/*.md`
+- `content/conclusion/**/*.md`
+- `worklog/**/*.md`
+
+archive 子仓库允许修改：
+
+- `archive/**` 由独立仓库管理。
+- 仅在 `archive/` 子仓库内单独执行 `git add` / `git commit` / `git push`。
+
+主仓库禁止修改：
+
+- `config/subscriptions.yaml`
+- `public/generated/**`
+- 脚本/前端代码
+- `.gitmodules`（除非用户明确要求处理 submodule 配置）
 
 ## 3. 输入解析规则
 
 ### 3.1 Archive 目录结构
+
+`archive/` 由独立仓库提供，主仓库只读引用。处理前先确认 submodule 已初始化并已同步到需要的版本。
 
 ```
 archive/
@@ -83,9 +105,16 @@ archive/
 
 ### 3.4 Archive 只读原则
 
-- Bot 不修改 `archive/` 下的任何文件。
+- 主仓库上下文中，Bot 不修改 `archive/` 下的任何文件。
 - `archive/index/message_ids.json` 由 astrbot 维护，Bot 只读用于参考，不作为去重主键。
 - 去重以 `content/card/` 下已有卡片为准（见第 4 节）。
+- 如需提交 archive 更新，必须进入 `archive/` 子仓库单独执行：
+
+```bash
+git add .
+git commit -m "chore: archive YYYY-MM-DD"
+git push
+```
 
 ### 3.5 TG 补充输入
 
@@ -120,15 +149,23 @@ archive/
 - `source.channel` 缺失：回退到 `未知来源`。
 - `source.channel` 存在但匹配不到订阅：回退到 `{school_slug}-未知来源`。
 - `pinned` 默认 `false`，bot 不得自动置顶。
+- 标题优先自然、可读、贴近原意，避免机械套用“关于……的通知”或“……通知”模板；但不得偏离原通知事实。
 
 ### 5.3 时间字段
 
 - `published`、`start_at`、`end_at` 统一 ISO8601 且显式 `+08:00`。
 - 示例：`'2026-02-01T09:00:00+08:00'`。
+- 时间判断按三类处理：
+  - 活动进行型：`start_at = 活动开始`，`end_at = 活动结束`。
+  - 报名/材料收集型：`start_at = published`，`end_at = 报名截止/提交截止/入群截止`。
+  - 只有日期型活动：按全天窗口处理。
 - 仅识别到日期时：
   - `start_at` 补 `00:00:00+08:00`
   - `end_at` 补 `23:59:59+08:00`
 - 仅提及活动/比赛/会议开始时间但未明确结束时间：`end_at` 默认为 `start_at + 2小时`。
+- 若通知中明确存在报名截止、材料截止、入群截止、收集截止，`end_at` 必须优先取该截止时间，而不是活动举行时间。
+- 若 `end_at` 采用报名窗口截止时间，`start_at` 默认取 `published`，避免出现 `start_at > end_at`。
+- 若同时存在 `start_at` 与 `end_at`，必须保证 `start_at < end_at`。
 - 无法可靠判断：`start_at/end_at` 置空，并在 `worklog` 标注 `time_uncertain`。
 
 ### 5.4 正文与附件
@@ -139,6 +176,8 @@ archive/
 - 附件优先写入 `frontmatter.attachments`。
 
 **Archive 资产处理（主要路径）**：
+
+- 下列路径由 archive submodule 提供；复制前必须确认 `archive/` 已初始化且数据已同步。
 
 - 图片：从 `archive/YYYY-MM-DD/photos/<hash_name>` 复制到 `content/img/`，引用用 `/img/...`。
 - 文件：从 `archive/YYYY-MM-DD/files/<hash_filename>` 复制到 `content/attachments/`，引用用 `/attachments/...`。
@@ -194,6 +233,7 @@ archive/
 ## 8. 质量红线
 
 - 标题/描述必须可读、非模板化、非机械截断。
+- 避免一批卡片都写成“xxxx通知”这种死板标题；标题要自然，但事实不能改。
 - `description` 建议 50~70 字，覆盖对象、动作、时间约束，必须使用 `>-` 语法。
 - 标签最多 5 个，建议 2~4 个有效业务标签。
 - 禁止正文代码块化污染（`````）。
@@ -234,10 +274,21 @@ Archive 格式中，`[回复]` 开头的消息段如果包含上述关键词，�
 - 已过期图片清单
 - 校验与构建结果
 
+对外完成汇报必须固定包含：
+
+- 新增卡片
+- 并入更新卡片
+- 来源群 / 发送者 / 时间
+- 附件 / 图片落地情况
+- `content/conclusion` / `worklog` 更新情况
+- 校验结果
+- Git 信息（所在分支、是否已提交、是否已推送到 `test`）
+
 ## 10. 校验、提交与故障策略
 
 - 写入后必须执行：`pnpm run validate:content`。
 - 校验通过再提交并推送 `test`。
+- archive 数据提交与主仓库内容提交是两套流程，不得混在同一个仓库上下文里操作。
 - 校验失败：
   - 不回滚文件。
   - 记录失败原因到 `worklog`。
@@ -262,4 +313,5 @@ Bot 侧建议：
 - 不自动改代码文件。
 - 不自动把 `pinned` 设为 `true`。
 - 不覆盖人工编辑的高质量语义字段（除非明确修错）。
-- 不修改 `archive/` 下的任何文件。
+- 不在主仓库上下文中修改 `archive/` 下的任何文件。
+- 不在未经用户明确允许时触碰 `main`。

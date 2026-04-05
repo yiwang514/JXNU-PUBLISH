@@ -63,11 +63,15 @@ data/
 
 # Tooling
 .gemini
-.claude
+.claude/*
+!.claude/skills/
+!.claude/skills/**/
+!.claude/skills/**/SKILL.md
 .opencode/
 .sisyphus/
-.claude/
-skills/
+/skill/
+/skill-ex/
+/skills/
 .claude/settings.local.json
 .claude/*.zip
 .vercel/
